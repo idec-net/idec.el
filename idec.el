@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;; In active developent full featured IDEC client.
+;; In active developent.
 ;; Fetched node must be support modern IDEC extensions like /list.txt, /x/c, etc.
 
 ;;; Code:
@@ -33,6 +33,7 @@
     "IDEC configuration."
     :group 'network)
 
+;; Not used
 (defcustom idec-nodes-list
     '("http://idec.spline-online.tk/"
       "https://ii-net.tk/ii/ii-point.php?q=/")
@@ -62,6 +63,11 @@
 (defcustom idec-echo-subscriptions nil
     "List of subribes echoes."
     :type 'list
+    :group 'idec)
+
+(defcustom idec-mail-dir "~/.emacs.d/idec-mail"
+    "Directory to store mail."
+    :type 'string
     :group 'idec)
 
 (defgroup idec-accounts nil
@@ -101,18 +107,27 @@
 (defun proccess-echo-list (raw-list)
     "Parse RAW-LIST from HTTP response."
     (with-output-to-temp-buffer "*IDEC: list.txt*"
-        (print raw-list)))
+        (dolist (line (split-string (decode-coding-string raw-list 'utf-8) "\n"))
+            (if (not (equal line ""))
+                    (print (format "Echo: %s || Description: %s || Count: %s"
+                                   (nth 0 (split-string line ":"))
+                                   (nth 2 (split-string line ":"))
+                                   (nth 1 (split-string line ":")))))
+            )))
 
 (defun idec-fetch-echo-list (nodeurl)
     "Fetch echoes list from remote NODEURL."
-    (url-retrieve nodeurl)
-    (switch-to-buffer (current-buffer)))
+    (with-current-buffer
+            (url-retrieve-synchronously nodeurl)
+        (goto-char (point-min))
+        (re-search-forward "^$")
+        (delete-region (point) (point-min))
+        (proccess-echo-list (buffer-string))))
 
 (defun idec-load-echoes ()
     "Load echoes list from node."
     (interactive)
-    (dolist (node idec-nodes-list)
-        (idec-fetch-echo-list (concat node "list.txt"))))
+    (idec-fetch-echo-list (concat idec-primary-node "list.txt")))
 
 ;; END OF ECHOES FUNCTIONS
 ;; ;;;;;;;;;;;;;;;;;;;;;;;
