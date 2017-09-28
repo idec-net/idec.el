@@ -3,7 +3,7 @@
 ;; Copyright (c) 2017 Denis Zheleztsov
 
 ;; Author: Denis Zheleztsov <difrex.punk@gmail.com>
-;; Keywords: lisp,network client,IDEC
+;; Keywords: lisp,network,IDEC
 ;; Version: 0.1
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -22,13 +22,55 @@
 ;;; Commentary:
 
 ;; In active developent full featured IDEC client.
+;; Fetched node must be support modern IDEC extensions like /list.txt, /x/c, etc.
 
 ;;; Code:
 
+(defvar idec-nodes-list
+    '("http://idec.spline-online.tk/"
+      "https://ii-net.tk/ii/ii-point.php?q=/")
+    "List of IDEC nodes.")
+
+;; Never used at this time.
+(defvar idec-use-list-txt t
+    "Use /list.txt extension.")
+
+(defvar idec-download-limit 50
+    "Limit of download messages.")
+
+(defvar idec-download-offset -50
+    "Offset of download messages.")
+
+(defvar idec-subscriptions '()
+    "List of subribes echoes.")
+
+;; FUNCTIONS
+;; ;;;;;;;;;
 (defun idec-load-new-messages ()
     "Load new messages from IDEC node."
     )
 
+;; ECHOES FUNCTIONS
+;; ;;;;;;;;;;;;;;;;
+(defun fetch-echo-list (url)
+    "Fetch echoes list from remote URL."
+    (message url))
+
+(defun idec-load-echoes ()
+    "Load echoes list from node."
+    (dolist (node idec-nodes-list)
+        (setq download-url (concat node "list.txt"))
+        (fetch-echo-list download-url)
+        ))
+
+;; END OF ECHOES FUNCTIONS
+;; ;;;;;;;;;;;;;;;;;;;;;;;
+
+;; END OF FUNCTIONS
+;; ;;;;;;;;;;;;;;;;
+
+
+(provide 'idec-load-echoes)
 (provide 'idec)
 
 ;;; idec.el ends here
