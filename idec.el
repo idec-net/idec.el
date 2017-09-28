@@ -1,4 +1,4 @@
-;;; idec.el -- GNU Emacs clien for IDEC network
+;;; idec.el -- GNU Emacs client for IDEC network
 
 ;; Copyright (c) 2017 Denis Zheleztsov
 
@@ -26,42 +26,93 @@
 
 ;;; Code:
 
-(defvar idec-nodes-list
+;; CUSTOMIZATION
+;; ;;;;;;;;;;;;;
+
+(defgroup idec nil
+    "IDEC configuration."
+    :group 'network)
+
+(defcustom idec-nodes-list
     '("http://idec.spline-online.tk/"
       "https://ii-net.tk/ii/ii-point.php?q=/")
-    "List of IDEC nodes.")
+    "List of IDEC nodes."
+    :type 'alist
+    :group 'idec)
+
+(defcustom idec-primary-node nil
+    "Primary node to send messages."
+    :type 'string
+    :group 'idec
+    )
 
 ;; Never used at this time.
-(defvar idec-use-list-txt t
-    "Use /list.txt extension.")
+(defcustom idec-use-list-txt t
+    "Use /list.txt extension."
+    :group 'idec)
 
-(defvar idec-download-limit 50
-    "Limit of download messages.")
+(defcustom idec-download-limit 50
+    "Limit of download messages."
+    :group 'idec)
 
-(defvar idec-download-offset -50
-    "Offset of download messages.")
+(defcustom idec-download-offset -50
+    "Offset of download messages."
+    :group 'idec)
 
-(defvar idec-subscriptions '()
-    "List of subribes echoes.")
+(defcustom idec-echo-subscriptions nil
+    "List of subribes echoes."
+    :type 'list
+    :group 'idec)
+
+(defgroup idec-accounts nil
+    "IDEC accounts settings."
+    :group 'idec
+    )
+
+(defcustom idec-account-nick nil
+    "Account nickname."
+    :type 'string
+    :group 'idec-accounts
+    )
+
+(defcustom idec-account-node nil
+    "Node to send messages."
+    :type 'string
+    :group 'idec-accounts)
+
+(defcustom idec-account-auth nil
+    "Account authstring."
+    :type 'string
+    :group 'idec-accounts
+    )
+
+;; END OF CUSTOMIZATION
+;; ;;;;;;;;;;;;;;;;;;;;
 
 ;; FUNCTIONS
 ;; ;;;;;;;;;
 (defun idec-load-new-messages ()
-    "Load new messages from IDEC node."
+    "Load new messages from IDEC nodes."
     )
 
 ;; ECHOES FUNCTIONS
 ;; ;;;;;;;;;;;;;;;;
-(defun fetch-echo-list (url)
-    "Fetch echoes list from remote URL."
-    (message url))
+
+(defun proccess-echo-list (raw-list)
+    "Parse RAW-LIST from HTTP response."
+    (with-output-to-temp-buffer "*IDEC: list.txt*"
+        (print raw-list)))
+
+(defun idec-fetch-echo-list (nodeurl)
+    "Fetch echoes list from remote NODEURL."
+    (url-retrieve nodeurl)
+    (switch-to-buffer (current-buffer)))
 
 (defun idec-load-echoes ()
     "Load echoes list from node."
+    (interactive)
     (dolist (node idec-nodes-list)
-        (setq download-url (concat node "list.txt"))
-        (fetch-echo-list download-url)
-        ))
+        (idec-fetch-echo-list (concat node "list.txt"))))
 
 ;; END OF ECHOES FUNCTIONS
 ;; ;;;;;;;;;;;;;;;;;;;;;;;
@@ -70,7 +121,6 @@
 ;; ;;;;;;;;;;;;;;;;
 
 
-(provide 'idec-load-echoes)
 (provide 'idec)
 
 ;;; idec.el ends here
