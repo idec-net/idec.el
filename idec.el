@@ -96,6 +96,15 @@
 ;; FUNCTIONS
 ;; ;;;;;;;;;
 
+(defun create-echo-mail-dir (echo)
+    "Create ECHO directory inside `idec-mail-dir'."
+    (if (file-exists-p idec-mail-dir)
+            (message idec-mail-dir)
+        (mkdir idec-mail-dir))
+    (if (file-exists-p (concat idec-mail-dir (concat "/" echo)))
+            (message (concat idec-mail-dir (concat "/" echo)))
+        (mkdir (concat idec-mail-dir (concat "/" echo)))))
+
 (defun idec-load-new-messages ()
     "Load new messages from IDEC nodes Not implemented.")
 
