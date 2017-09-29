@@ -1,4 +1,4 @@
-;;; idec.el -- GNU Emacs client for IDEC network
+;;; idec.el --- GNU Emacs client for IDEC network
 
 ;; Copyright (c) 2017 Denis Zheleztsov
 
@@ -44,20 +44,21 @@
 (defcustom idec-primary-node nil
     "Primary node to send messages."
     :type 'string
-    :group 'idec
-    )
+    :group 'idec)
 
 ;; Never used at this time.
 (defcustom idec-use-list-txt t
     "Use /list.txt extension."
     :group 'idec)
 
-(defcustom idec-download-limit 50
+(defcustom idec-download-limit "50"
     "Limit of download messages."
+    :type 'string
     :group 'idec)
 
-(defcustom idec-download-offset -50
+(defcustom idec-download-offset "-50"
     "Offset of download messages."
+    :type 'string
     :group 'idec)
 
 (defcustom idec-echo-subscriptions nil
@@ -72,14 +73,12 @@
 
 (defgroup idec-accounts nil
     "IDEC accounts settings."
-    :group 'idec
-    )
+    :group 'idec)
 
 (defcustom idec-account-nick nil
     "Account nickname."
     :type 'string
-    :group 'idec-accounts
-    )
+    :group 'idec-accounts)
 
 (defcustom idec-account-node nil
     "Node to send messages."
@@ -89,30 +88,61 @@
 (defcustom idec-account-auth nil
     "Account authstring."
     :type 'string
-    :group 'idec-accounts
-    )
+    :group 'idec-accounts)
 
 ;; END OF CUSTOMIZATION
 ;; ;;;;;;;;;;;;;;;;;;;;
 
 ;; FUNCTIONS
 ;; ;;;;;;;;;
+
 (defun idec-load-new-messages ()
-    "Load new messages from IDEC nodes."
-    )
+    "Load new messages from IDEC nodes Not implemented.")
 
 ;; ECHOES FUNCTIONS
 ;; ;;;;;;;;;;;;;;;;
 
+(defun make-echo-url (echoes)
+    "Make ECHOES url to retreive messages."
+    ;; Check ECHOES is list
+    (if (listp echoes)
+            ;; Required GNU Emacs >= 25.3
+            (message (concat idec-primary-node "u/e/"
+                             (string-join echoes "/") "/" idec-download-offset ":" idec-download-limit))
+        (message (concat idec-primary-node "u/e/" echoes "/" idec-download-offset ":" idec-download-limit))))
+
+(defun display-echo-messages (messages)
+    "Display downloaded MESSAGES from echo."
+    (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: browse echo*"))
+        (switch-to-buffer "*IDEC: browse echo*")
+        (princ messages)))
+
+(defun load-echo-messages (echo)
+    "Load messages from ECHO."
+    (with-current-buffer
+            (url-retrieve-synchronously (make-echo-url echo))
+        (goto-char (point-min))
+        (re-search-forward "^$")
+        (delete-region (point) (point-min))
+        (display-echo-messages (buffer-string))))
+
 (defun proccess-echo-list (raw-list)
     "Parse RAW-LIST from HTTP response."
-    (with-output-to-temp-buffer "*IDEC: list.txt*"
+    (with-output-to-temp-buffer (get-buffer-create "*IDEC: list.txt*")
+        (switch-to-buffer "*IDEC: list.txt*")
         (dolist (line (split-string (decode-coding-string raw-list 'utf-8) "\n"))
-            (if (not (equal line ""))
-                    (print (format "Echo: %s || Description: %s || Count: %s"
-                                   (nth 0 (split-string line ":"))
-                                   (nth 2 (split-string line ":"))
-                                   (nth 1 (split-string line ":")))))
+            (when (not (equal line ""))
+                ;; Defind echo
+                (defvar current-echo nil)
+                (setq current-echo (nth 0 (split-string line ":")))
+                ;; Create clickable button
+                (insert-text-button current-echo
+                                    'action (lambda (x) (load-echo-messages (button-get x 'echo)))
+                                    'help-echo (concat "Go to echo " current-echo)
+                                    'echo current-echo)
+                (princ (format "\t\t||%s\t\t%s\n"
+                               (nth 2 (split-string line ":"))
+                               (nth 1 (split-string line ":")))))
             )))
 
 (defun idec-fetch-echo-list (nodeurl)
