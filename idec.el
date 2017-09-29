@@ -106,19 +106,30 @@
         (mkdir (concat idec-mail-dir (concat "/" echo)))))
 
 (defun idec-load-new-messages ()
-    "Load new messages from IDEC nodes Not implemented.")
+    "Load new messages from IDEC nodes Not implemented."
+    )
 
 ;; ECHOES FUNCTIONS
 ;; ;;;;;;;;;;;;;;;;
 
 (defun make-echo-url (echoes)
-    "Make ECHOES url to retreive messages."
+    "Make ECHOES url to retreive messages from `idec-primary-node';
+with `idec-download-offset' and `idec-download-limit'."
     ;; Check ECHOES is list
     (if (listp echoes)
             ;; Required GNU Emacs >= 25.3
             (message (concat idec-primary-node "u/e/"
                              (string-join echoes "/") "/" idec-download-offset ":" idec-download-limit))
         (message (concat idec-primary-node "u/e/" echoes "/" idec-download-offset ":" idec-download-limit))))
+
+(defun download-subscriptions ()
+    "Download messages from echoes defined in `idec-echo-subscriptions' from `idec-primary-node'."
+    (with-current-buffer
+            (url-retrieve-synchronously (make-echo-url (split-string idec-echo-subscriptions ",")))
+        (goto-char (point-min))
+        (re-search-forward "^$")
+        (delete-region (point) (point-min))
+        (display-echo-messages (buffer-string))))
 
 (defun display-echo-messages (messages)
     "Display downloaded MESSAGES from echo."
