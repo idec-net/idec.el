@@ -51,13 +51,21 @@
     "Use /list.txt extension."
     :group 'idec)
 
+(defcustom idec-smart-fetch nil
+    "Enable smat fetching;
+Download only new messages; Traffic saving; Not implemented."
+    :type 'boolean
+    :group 'idec)
+
 (defcustom idec-download-limit "50"
-    "Limit of download messages."
+    "Limit of download messages;
+Not used if `idec-smart-fetching' is not nil."
     :type 'string
     :group 'idec)
 
 (defcustom idec-download-offset "-50"
-    "Offset of download messages."
+    "Offset of download messages;
+Not used if `idec-smart-fetching' is not nil."
     :type 'string
     :group 'idec)
 
@@ -93,6 +101,18 @@
 ;; END OF CUSTOMIZATION
 ;; ;;;;;;;;;;;;;;;;;;;;
 
+;; VARIABLES
+;; ;;;;;;;;;
+
+(defvar smart-download-limit nil
+    "Used with `idec-smart-fetch'.")
+
+(defvar smart-download-offset nil
+    "Used with `idec-smart-fetch'.")
+
+;; END OF VARIABLES
+;; ;;;;;;;;;;;;;;;;
+
 ;; FUNCTIONS
 ;; ;;;;;;;;;
 
@@ -105,9 +125,48 @@
             (message (concat idec-mail-dir (concat "/" echo)))
         (mkdir (concat idec-mail-dir (concat "/" echo)))))
 
+(defun get-echo-dir (echo)
+    "Get ECHO dir from `idec-mail-dir'."
+    (concat idec-mail-dir (concat "/" echo)))
+
+(defun check-for-echo ()
+    "Check LINE and create dir."
+    (with-current-buffer
+            (if (string-match-p "^.*\..*$")
+                    ""
+                nil)))
+
+(defun check-message-in-echo (msg echo)
+    "Check if exists message MSG in ECHO `idec-mail-dir'."
+    (if (file-exists-p (concat (get-echo-dir echo) (concat "/" msg)))
+            nil))
+
+(defun get-url-content (url)
+    "Get URL content and return it without headers."
+    (with-current-buffer
+            (url-retrieve-synchronously url)
+        (goto-char (point-min))
+        (re-search-forward "^$")
+        (forward-line)
+        (delete-region (point) (point-min))
+        (buffer-string)))
+
 (defun idec-load-new-messages ()
-    "Load new messages from IDEC nodes Not implemented."
-    )
+    "Load new messages from IDEC `idec-primary-node';
+Not implemented."
+    (interactive)
+    (defvar current-echo nil)
+    (dolist (line (split-string (download-subscriptions) "\n"))
+        (message (concat "Working for " line))
+        (if (string-match "^.*\..*$" line)
+                (setq current-echo line)
+            (proccess-echo-message line current-echo))
+        ))
+
+(defun download-subscriptions ()
+    "Download messages from echoes defined in `idec-echo-subscriptions' from `idec-primary-node'."
+    (get-url-content
+     (make-echo-url (split-string idec-echo-subscriptions ","))))
 
 ;; ECHOES FUNCTIONS
 ;; ;;;;;;;;;;;;;;;;
@@ -122,15 +181,6 @@ with `idec-download-offset' and `idec-download-limit'."
                              (string-join echoes "/") "/" idec-download-offset ":" idec-download-limit))
         (message (concat idec-primary-node "u/e/" echoes "/" idec-download-offset ":" idec-download-limit))))
 
-(defun download-subscriptions ()
-    "Download messages from echoes defined in `idec-echo-subscriptions' from `idec-primary-node'."
-    (with-current-buffer
-            (url-retrieve-synchronously (make-echo-url (split-string idec-echo-subscriptions ",")))
-        (goto-char (point-min))
-        (re-search-forward "^$")
-        (delete-region (point) (point-min))
-        (display-echo-messages (buffer-string))))
-
 (defun display-echo-messages (messages)
     "Display downloaded MESSAGES from echo."
     (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: browse echo*"))
@@ -139,12 +189,14 @@ with `idec-download-offset' and `idec-download-limit'."
 
 (defun load-echo-messages (echo)
     "Load messages from ECHO."
-    (with-current-buffer
-            (url-retrieve-synchronously (make-echo-url echo))
-        (goto-char (point-min))
-        (re-search-forward "^$")
-        (delete-region (point) (point-min))
-        (display-echo-messages (buffer-string))))
+    (display-echo-messages (get-url-content (make-echo-url echo))))
+
+(defun proccess-echo-message (msg echo)
+    "Download new message MSG in ECHO."
+    (with-output-to-temp-buffer (get-buffer-create "*IDEC: DEBUG*")
+        (switch-to-buffer "*IDEC: DEBUG*")
+        (print msg)
+        (print echo)))
 
 (defun proccess-echo-list (raw-list)
     "Parse RAW-LIST from HTTP response."
@@ -167,15 +219,10 @@ with `idec-download-offset' and `idec-download-limit'."
 
 (defun idec-fetch-echo-list (nodeurl)
     "Fetch echoes list from remote NODEURL."
-    (with-current-buffer
-            (url-retrieve-synchronously nodeurl)
-        (goto-char (point-min))
-        (re-search-forward "^$")
-        (delete-region (point) (point-min))
-        (proccess-echo-list (buffer-string))))
+        (proccess-echo-list (get-url-content nodeurl)))
 
 (defun idec-load-echoes ()
-    "Load echoes list from node."
+    "Load echoes list.txt from node `idec-primary-node'."
     (interactive)
     (idec-fetch-echo-list (concat idec-primary-node "list.txt")))
 
