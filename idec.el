@@ -121,25 +121,30 @@ Not used if `idec-smart-fetching' is not nil."
     (if (file-exists-p idec-mail-dir)
             (message idec-mail-dir)
         (mkdir idec-mail-dir))
-    (if (file-exists-p (concat idec-mail-dir (concat "/" echo)))
-            (message (concat idec-mail-dir (concat "/" echo)))
-        (mkdir (concat idec-mail-dir (concat "/" echo)))))
+    (if (file-exists-p (concat idec-mail-dir "/" echo))
+            (message (concat idec-mail-dir "/" echo))
+        (mkdir (concat idec-mail-dir "/" echo))))
 
 (defun get-echo-dir (echo)
     "Get ECHO dir from `idec-mail-dir'."
     (concat idec-mail-dir (concat "/" echo)))
 
-(defun check-for-echo ()
-    "Check LINE and create dir."
-    (with-current-buffer
-            (if (string-match-p "^.*\..*$")
-                    ""
-                nil)))
+(defun filename-to-store (content id)
+    "Make filename from CONTENT unixtime and ID."
+    (concat (nth 2 (split-string content)) "-" id))
+
+(defun get-message-file (echo id content)
+    "Get ECHO message filename by ID and CONTENT unixtime."
+    (concat (get-echo-dir echo) "/" (filename-to-store content id)))
+
+(defun store-message (content echo id)
+    "Store CONTENT from ECHO message in `idec-mail-dir' with it ID."
+    (create-echo-mail-dir echo)
+    (write-region content nil (get-message-file echo id content) nil nil nil t))
 
 (defun check-message-in-echo (msg echo)
     "Check if exists message MSG in ECHO `idec-mail-dir'."
-    (if (file-exists-p (concat (get-echo-dir echo) (concat "/" msg)))
-            nil))
+    (file-exists-p (concat (get-echo-dir echo) (concat "/" msg))))
 
 (defun get-url-content (url)
     "Get URL content and return it without headers."
@@ -156,12 +161,26 @@ Not used if `idec-smart-fetching' is not nil."
 Not implemented."
     (interactive)
     (defvar current-echo nil)
+    (defvar new-messages '())
     (dolist (line (split-string (download-subscriptions) "\n"))
-        (message (concat "Working for " line))
-        (if (string-match "^.*\..*$" line)
-                (setq current-echo line)
-            (proccess-echo-message line current-echo))
-        ))
+        (if (string-match "\\." line)
+                (and (setq current-echo line)
+                     (message current-echo))
+            (if (not (check-message-in-echo current-echo line))
+                    (download-message current-echo line)))))
+
+(defun get-message-content (echo msg)
+    "Get ECHO MSG content from `idec-primary-node'."
+    (decode-coding-string
+     (base64-decode-string
+      (nth 1 (split-string (get-url-content (make-messages-url msg)) ":")))
+     'utf-8))
+
+(defun download-message (echo msg)
+    "Download ECHO message MSG to `idec-mail-dir'."
+    (message (concat "Download message " msg " to " echo))
+    (if (not (string-match "^$" msg))
+            (store-message (get-message-content echo msg) echo msg)))
 
 (defun download-subscriptions ()
     "Download messages from echoes defined in `idec-echo-subscriptions' from `idec-primary-node'."
@@ -181,6 +200,15 @@ with `idec-download-offset' and `idec-download-limit'."
                              (string-join echoes "/") "/" idec-download-offset ":" idec-download-limit))
         (message (concat idec-primary-node "u/e/" echoes "/" idec-download-offset ":" idec-download-limit))))
 
+(defun make-messages-url (messages)
+    "Make MESSAGES url to retreive messages from `idec-primary-node'."
+    ;; Check ECHOES is list
+    (if (listp messages)
+            ;; Required GNU Emacs >= 25.3
+            (message (concat idec-primary-node "u/m/"
+                    (string-join messages "/")))
+        (message (concat idec-primary-node "u/m/" messages))))
+
 (defun display-echo-messages (messages)
     "Display downloaded MESSAGES from echo."
     (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: browse echo*"))
@@ -195,8 +223,8 @@ with `idec-download-offset' and `idec-download-limit'."
     "Download new message MSG in ECHO."
     (with-output-to-temp-buffer (get-buffer-create "*IDEC: DEBUG*")
         (switch-to-buffer "*IDEC: DEBUG*")
-        (print msg)
-        (print echo)))
+        (princ msg)
+        (princ echo)))
 
 (defun proccess-echo-list (raw-list)
     "Parse RAW-LIST from HTTP response."
