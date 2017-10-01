@@ -133,18 +133,27 @@ Not used if `idec-smart-fetching' is not nil."
     "Make filename from CONTENT unixtime and ID."
     (concat (nth 2 (split-string content)) "-" id))
 
-(defun get-message-file (echo id content)
-    "Get ECHO message filename by ID and CONTENT unixtime."
-    (concat (get-echo-dir echo) "/" (filename-to-store content id)))
+(defun get-message-file (echo id)
+    "Get ECHO message filename by ID."
+    (concat (get-echo-dir echo) "/" id))
+
+(defun get-counter-file (echo)
+    "Get ECHO counter filename."
+    (concat (get-echo-dir echo) "/counter"))
 
 (defun store-message (content echo id)
     "Store CONTENT from ECHO message in `idec-mail-dir' with it ID."
     (create-echo-mail-dir echo)
-    (write-region content nil (get-message-file echo id content) nil nil nil t))
+    (write-region content nil (get-message-file echo id)))
+
+(defun store-echo-counter (echo)
+    "Store count messages in ECHO."
+    (create-echo-mail-dir echo)
+    (write-region (echo-messages-count echo) nil (get-counter-file echo)))
 
 (defun check-message-in-echo (msg echo)
     "Check if exists message MSG in ECHO `idec-mail-dir'."
-    (file-exists-p (concat (get-echo-dir echo) (concat "/" msg))))
+    (file-exists-p (get-message-file echo msg)))
 
 (defun get-url-content (url)
     "Get URL content and return it without headers."
@@ -165,9 +174,8 @@ Not implemented."
     (dolist (line (split-string (download-subscriptions) "\n"))
         (if (string-match "\\." line)
                 (and (setq current-echo line)
-                     (message current-echo))
-            (if (not (check-message-in-echo current-echo line))
-                    (download-message current-echo line)))))
+                     (store-echo-counter line))
+            (download-message current-echo line))))
 
 (defun get-message-content (echo msg)
     "Get ECHO MSG content from `idec-primary-node'."
@@ -180,7 +188,9 @@ Not implemented."
     "Download ECHO message MSG to `idec-mail-dir'."
     (message (concat "Download message " msg " to " echo))
     (if (not (string-match "^$" msg))
-            (store-message (get-message-content echo msg) echo msg)))
+            (if (not
+                 (check-message-in-echo msg echo))
+                    (store-message (get-message-content echo msg) echo msg))))
 
 (defun download-subscriptions ()
     "Download messages from echoes defined in `idec-echo-subscriptions' from `idec-primary-node'."
@@ -209,6 +219,15 @@ with `idec-download-offset' and `idec-download-limit'."
                     (string-join messages "/")))
         (message (concat idec-primary-node "u/m/" messages))))
 
+(defun make-count-url (echo)
+    "Return messages count url in `idec-primary-node' from ECHO."
+    (concat idec-primary-node "/x/c/" echo))
+
+(defun echo-messages-count (echo)
+    "Get messages count in ECHO."
+    (nth 1 (split-string
+            (get-url-content (make-count-url echo)) ":")))
+
 (defun display-echo-messages (messages)
     "Display downloaded MESSAGES from echo."
     (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: browse echo*"))
@@ -217,6 +236,7 @@ with `idec-download-offset' and `idec-download-limit'."
 
 (defun load-echo-messages (echo)
     "Load messages from ECHO."
+    (store-echo-counter echo)
     (display-echo-messages (get-url-content (make-echo-url echo))))
 
 (defun proccess-echo-message (msg echo)
