@@ -110,6 +110,9 @@ Not used if `idec-smart-fetching' is not nil."
 (defvar smart-download-offset nil
     "Used with `idec-smart-fetch'.")
 
+(defvar new-messages-list '()
+    "New messages for display.")
+
 ;; END OF VARIABLES
 ;; ;;;;;;;;;;;;;;;;
 
@@ -153,7 +156,7 @@ Not used if `idec-smart-fetching' is not nil."
 
 (defun check-message-in-echo (msg echo)
     "Check if exists message MSG in ECHO `idec-mail-dir'."
-    (file-exists-p (get-message-file echo msg)))
+    (not (file-exists-p (get-message-file echo msg))))
 
 (defun get-url-content (url)
     "Get URL content and return it without headers."
@@ -166,8 +169,7 @@ Not used if `idec-smart-fetching' is not nil."
         (buffer-string)))
 
 (defun idec-load-new-messages ()
-    "Load new messages from IDEC `idec-primary-node';
-Not implemented."
+    "Load new messages from IDEC `idec-primary-node'."
     (interactive)
     (defvar current-echo nil)
     (defvar new-messages '())
@@ -175,7 +177,26 @@ Not implemented."
         (if (string-match "\\." line)
                 (and (setq current-echo line)
                      (store-echo-counter line))
-            (download-message current-echo line))))
+            (when (and (check-message-in-echo line current-echo)
+                       (> (length line) 1))
+                (download-message current-echo line))))
+    (display-new-messages))
+
+(defun display-new-messages ()
+    "Display new fetched messages from `new-messages-list'."
+    (with-output-to-temp-buffer (get-buffer-create "*IDEC: New messages*")
+        (switch-to-buffer "*IDEC: New messages*")
+        (dolist (msg new-messages-list)
+            ;; Write message subj
+            (insert-text-button (nth 6 (split-string msg "\n"))
+                                    'help-echo (concat "Read message"))
+            ;; Write message time and echo
+            (princ (format "\t\t\t%s\t%s\t\t" (nth 1 (split-string msg "\n"))
+                           (current-time-string
+                                          (car (read-from-string (nth 2 (split-string msg "\n")))))
+                           ))
+            (princ "\n")
+            (add-to-invisibility-spec '(msg . t)))))
 
 (defun get-message-content (echo msg)
     "Get ECHO MSG content from `idec-primary-node'."
@@ -187,10 +208,14 @@ Not implemented."
 (defun download-message (echo msg)
     "Download ECHO message MSG to `idec-mail-dir'."
     (message (concat "Download message " msg " to " echo))
-    (if (not (string-match "^$" msg))
-            (if (not
-                 (check-message-in-echo msg echo))
-                    (store-message (get-message-content echo msg) echo msg))))
+    (defvar message-content)
+    (if (string= "" msg)
+            (message "Nil message")
+        (when (and (not (string= "" msg))
+                   (check-message-in-echo msg echo))
+            (setq message-content (get-message-content echo msg))
+            (store-message message-content echo msg)
+            (setq new-messages-list (push message-content new-messages-list)))))
 
 (defun download-subscriptions ()
     "Download messages from echoes defined in `idec-echo-subscriptions' from `idec-primary-node'."
@@ -284,3 +309,4 @@ with `idec-download-offset' and `idec-download-limit'."
 (provide 'idec)
 
 ;;; idec.el ends here
+
