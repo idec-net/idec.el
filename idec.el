@@ -158,6 +158,56 @@ Not used if `idec-smart-fetching' is not nil."
     "Check if exists message MSG in ECHO `idec-mail-dir'."
     (not (file-exists-p (get-message-file echo msg))))
 
+;; Message fields pasing
+(defun get-message-tags (msg)
+    "Get MSG tags."
+    (nth 0 (split-string msg "\n")))
+
+(defun get-message-echo (msg)
+    "Get MSG echo."
+    (nth 1 (split-string msg "\n")))
+
+(defun get-message-time (msg)
+    "Get MSG time."
+    (current-time-string
+     (car (read-from-string (nth 2 (split-string msg "\n"))))))
+
+(defun get-message-author (msg)
+    "Get MSG author."
+    (nth 3 (split-string msg "\n")))
+
+(defun get-message-address (msg)
+    "Get MSG address."
+    (nth 4 (split-string msg "\n")))
+
+(defun get-message-recipient (msg)
+    "Get MSG recipient."
+    (nth 5 (split-string msg "\n")))
+
+(defun get-message-subg (msg)
+    "Get MSG recipient."
+    (nth 6 (split-string msg "\n")))
+
+(defun get-message-body (msg)
+    "Get MSG body text."
+    (s-join "\n" (last (split-string msg "\n") 6)))
+
+(defun get-message-field (msg field)
+    "Get message MSG FIELD."
+    (defvar fields-hash (make-hash-table :test 'equal)
+        "Hashtable with MSG parsing functions.")
+
+    ;; Define hashtable first
+    (puthash "tags" (get-message-tags msg) fields-hash)
+    (puthash "echo" (get-message-echo msg) fields-hash)
+    (puthash "time" (get-message-time msg) fields-hash)
+    (puthash "author" (get-message-author msg) fields-hash)
+    (puthash "address" (get-message-address msg) fields-hash)
+    (puthash "recipient" (get-message-recipient msg) fields-hash)
+    (puthash "subg" (get-message-subg msg) fields-hash)
+    (puthash "body" (get-message-body msg) fields-hash)
+    (gethash field fields-hash))
+
 (defun get-url-content (url)
     "Get URL content and return it without headers."
     (with-current-buffer
@@ -182,20 +232,33 @@ Not used if `idec-smart-fetching' is not nil."
                 (download-message current-echo line))))
     (display-new-messages))
 
+(defun display-message (msg)
+    "Display message MSG in new buffer in idec-mode."
+    (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: view " (get-message-field msg "subg") "*"))
+        (switch-to-buffer (concat "*IDEC: view " (get-message-field msg "subg") "*"))
+            (princ (concat "From: \t" (get-message-field msg "author") "\n"))
+        (princ (concat "To:      " (get-message-field msg "recipient") "\n"))
+        (princ (concat "Echo:    " (get-message-field msg "subg") "\n"))
+        (princ (concat "At:      " (get-message-field msg "time") "\n"))
+        (princ (concat "Subject: " (get-message-field msg "subg") "\n"))
+        (princ (get-message-field msg "body"))))
+
 (defun display-new-messages ()
     "Display new fetched messages from `new-messages-list'."
     (with-output-to-temp-buffer (get-buffer-create "*IDEC: New messages*")
         (switch-to-buffer "*IDEC: New messages*")
         (dolist (msg new-messages-list)
             ;; Write message subj
-            (insert-text-button (nth 6 (split-string msg "\n"))
-                                    'help-echo (concat "Read message"))
+            (insert-text-button (get-message-field msg "subg")
+                                'help-echo "Read message"
+                                'plain-msg msg
+                                'action (lambda (x) (display-message (button-get x 'plain-msg))))
             ;; Write message time and echo
-            (princ (format "\t\t\t%s\t%s\t\t" (nth 1 (split-string msg "\n"))
-                           (current-time-string
-                                          (car (read-from-string (nth 2 (split-string msg "\n")))))
-                           ))
-            (princ "\n")
+            (princ (format "\t\t\t%s\t%s(%s)\t%s\t\t\n"
+                           (get-message-field msg "author")
+                           (get-message-field msg "echo")
+                           (get-message-field msg "address")
+                           (get-message-field msg "time")))
             (add-to-invisibility-spec '(msg . t)))))
 
 (defun get-message-content (echo msg)
@@ -232,7 +295,7 @@ with `idec-download-offset' and `idec-download-limit'."
     (if (listp echoes)
             ;; Required GNU Emacs >= 25.3
             (message (concat idec-primary-node "u/e/"
-                             (string-join echoes "/") "/" idec-download-offset ":" idec-download-limit))
+                             (s-join "/" echoes) "/" idec-download-offset ":" idec-download-limit))
         (message (concat idec-primary-node "u/e/" echoes "/" idec-download-offset ":" idec-download-limit))))
 
 (defun make-messages-url (messages)
@@ -241,7 +304,7 @@ with `idec-download-offset' and `idec-download-limit'."
     (if (listp messages)
             ;; Required GNU Emacs >= 25.3
             (message (concat idec-primary-node "u/m/"
-                    (string-join messages "/")))
+                    (s-join "/" messages)))
         (message (concat idec-primary-node "u/m/" messages))))
 
 (defun make-count-url (echo)
@@ -309,4 +372,3 @@ with `idec-download-offset' and `idec-download-limit'."
 (provide 'idec)
 
 ;;; idec.el ends here
-
