@@ -51,9 +51,9 @@
     "Use /list.txt extension."
     :group 'idec)
 
-(defcustom idec-smart-fetch nil
+(defcustom idec-smart-fetch t
     "Enable smat fetching;
-Download only new messages; Traffic saving; Not implemented."
+Download only new messages; Not implemented."
     :type 'boolean
     :group 'idec)
 
@@ -116,6 +116,34 @@ Not used if `idec-smart-fetching' is not nil."
 ;; END OF VARIABLES
 ;; ;;;;;;;;;;;;;;;;
 
+;; MODE
+;; ;;;;
+
+(defun idec-close-message-buffer ()
+    "Close buffer with message."
+    (kill-buffer (current-buffer)))
+
+(defvar idec-mode-map nil
+    "Keymapping for IDEC mode.")
+
+(unless idec-mode-map
+    (let ((map (make-sparse-keymap)))
+        (define-key map "\C-c ." 'idec-close-message-buffer)
+        (setq idec-mode-map map)))
+
+(define-derived-mode idec-mode
+    text-mode "[idec]"
+    "Major mode for view and editing IDEC messages."
+    (kill-all-local-variables)
+    ;; Mode definition
+    (setq major-mode 'idec-mode)
+    (setq mode-name "[idec]")
+    (use-local-map idec-mode-map)
+    (setq imenu-generic-expression "*IDEC"))
+
+;; END OF MODE
+;; ;;;;;;;;;;;
+
 ;; FUNCTIONS
 ;; ;;;;;;;;;
 
@@ -159,38 +187,59 @@ Not used if `idec-smart-fetching' is not nil."
     (not (file-exists-p (get-message-file echo msg))))
 
 ;; Message fields pasing
+(defun trim-string (string)
+  "Remove white spaces in beginning and ending of STRING;
+White space here is any of: space, tab, Emacs newline (line feed, ASCII 10)."
+(replace-regexp-in-string "\\`[ \t\n]*" "" (replace-regexp-in-string "[ \t\n]*\\'" "" string)))
+
 (defun get-message-tags (msg)
     "Get MSG tags."
-    (nth 0 (split-string msg "\n")))
+    (trim-string (nth 0 (split-string msg "\n"))))
 
 (defun get-message-echo (msg)
     "Get MSG echo."
-    (nth 1 (split-string msg "\n")))
+    (trim-string (nth 1 (split-string msg "\n"))))
 
 (defun get-message-time (msg)
     "Get MSG time."
-    (current-time-string
-     (car (read-from-string (nth 2 (split-string msg "\n"))))))
+    (trim-string (current-time-string
+     (car (read-from-string (nth 2 (split-string msg "\n")))))))
 
 (defun get-message-author (msg)
     "Get MSG author."
-    (nth 3 (split-string msg "\n")))
+    (trim-string (nth 3 (split-string msg "\n"))))
 
 (defun get-message-address (msg)
     "Get MSG address."
-    (nth 4 (split-string msg "\n")))
+    (trim-string (nth 4 (split-string msg "\n"))))
 
 (defun get-message-recipient (msg)
     "Get MSG recipient."
-    (nth 5 (split-string msg "\n")))
+    (trim-string (nth 5 (split-string msg "\n"))))
 
 (defun get-message-subj (msg)
     "Get MSG recipient."
-    (nth 6 (split-string msg "\n")))
+    (trim-string (nth 6 (split-string msg "\n"))))
 
 (defun get-message-body (msg)
     "Get MSG body text."
     (s-join "\n" (last (split-string msg "\n") 6)))
+
+(defun get-longest-field (field msg-list)
+    "Return longest FIELD in MSG-LIST."
+    (defvar field-legth '())
+    (defvar field-max nil)
+    (setq field-max 0)
+    (dolist (msg msg-list)
+        (when (> (length (get-message-field msg field))
+                 field-max)
+            (setq field-max (length (get-message-field msg field)))))
+    field-max
+    ;; Populate list
+    ;; (dolist (msg msg-list)
+    ;;     (setq field-legth (append field-legth (length (get-message-field msg field)))))
+    ;; (last (sort field-legth '<))
+    )
 
 (defun get-message-field (msg field)
     "Get message MSG FIELD."
@@ -235,14 +284,17 @@ Not used if `idec-smart-fetching' is not nil."
 (defun display-message (msg)
     "Display message MSG in new buffer in idec-mode."
     (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: view " (get-message-field msg "subj") "*"))
+        ;; Run in IDEC mode
         (switch-to-buffer (concat "*IDEC: view " (get-message-field msg "subj") "*"))
         (princ (concat "From:    " (get-message-field msg "author") "(" (get-message-field msg "address") ")" "\n"))
         (princ (concat "To:      " (get-message-field msg "recipient") "\n"))
         (princ (concat "Echo:    " (get-message-field msg "echo") "\n"))
         (princ (concat "At:      " (get-message-field msg "time") "\n"))
         (princ (concat "Subject: " (get-message-field msg "subj") "\n"))
-        (princ (concat "_______________________________\n\n"
-                       (get-message-field msg "body")))))
+        (princ (concat "__________________________________\n\n"
+                       (get-message-field msg "body")))
+        (add-text-properties (point-min) (point-max) 'read-only))
+    (idec-mode))
 
 (defun display-new-messages ()
     "Display new fetched messages from `new-messages-list'."
@@ -250,14 +302,28 @@ Not used if `idec-smart-fetching' is not nil."
         (switch-to-buffer "*IDEC: New messages*")
         (dolist (msg new-messages-list)
             ;; Write message subj
-            (insert-text-button (get-message-field msg "subj")
+            (insert-text-button (concat (get-message-field msg "subj")
+                                        (make-string
+                                         (- (get-longest-field "subj" new-messages-list)
+                                            (length (get-message-field msg "subj")))
+                                         ? ))
                                 'help-echo "Read message"
                                 'plain-msg msg
                                 'action (lambda (x) (display-message (button-get x 'plain-msg))))
             ;; Write message time and echo
-            (princ (format "\t\t\t%s(%s)\t%s\t%s\t\t\n"
+            (princ (format "  %s(%s)%s%s\t%s\n"
                            (get-message-field msg "author")
                            (get-message-field msg "address")
+                           (make-string (-
+                                         (+
+                                          (get-longest-field "author" new-messages-list)
+                                          (get-longest-field "address" new-messages-list)
+                                          1)
+                                         (+
+                                          (length (get-message-field msg "author"))
+                                          (length (get-message-field msg "address")))
+                                         )
+                                        ? )
                            (get-message-field msg "echo")
                            (get-message-field msg "time")))
             (add-to-invisibility-spec '(msg . t)))))
@@ -352,7 +418,8 @@ with `idec-download-offset' and `idec-download-limit'."
                 (princ (format "\t\t||%s\t\t%s\n"
                                (nth 2 (split-string line ":"))
                                (nth 1 (split-string line ":")))))
-            )))
+            ))
+    (idec-mode))
 
 (defun idec-fetch-echo-list (nodeurl)
     "Fetch echoes list from remote NODEURL."
