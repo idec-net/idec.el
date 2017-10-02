@@ -184,7 +184,7 @@ Not used if `idec-smart-fetching' is not nil."
     "Get MSG recipient."
     (nth 5 (split-string msg "\n")))
 
-(defun get-message-subg (msg)
+(defun get-message-subj (msg)
     "Get MSG recipient."
     (nth 6 (split-string msg "\n")))
 
@@ -204,7 +204,7 @@ Not used if `idec-smart-fetching' is not nil."
     (puthash "author" (get-message-author msg) fields-hash)
     (puthash "address" (get-message-address msg) fields-hash)
     (puthash "recipient" (get-message-recipient msg) fields-hash)
-    (puthash "subg" (get-message-subg msg) fields-hash)
+    (puthash "subj" (get-message-subj msg) fields-hash)
     (puthash "body" (get-message-body msg) fields-hash)
     (gethash field fields-hash))
 
@@ -234,14 +234,15 @@ Not used if `idec-smart-fetching' is not nil."
 
 (defun display-message (msg)
     "Display message MSG in new buffer in idec-mode."
-    (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: view " (get-message-field msg "subg") "*"))
-        (switch-to-buffer (concat "*IDEC: view " (get-message-field msg "subg") "*"))
-            (princ (concat "From: \t" (get-message-field msg "author") "\n"))
+    (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: view " (get-message-field msg "subj") "*"))
+        (switch-to-buffer (concat "*IDEC: view " (get-message-field msg "subj") "*"))
+        (princ (concat "From:    " (get-message-field msg "author") "(" (get-message-field msg "address") ")" "\n"))
         (princ (concat "To:      " (get-message-field msg "recipient") "\n"))
-        (princ (concat "Echo:    " (get-message-field msg "subg") "\n"))
+        (princ (concat "Echo:    " (get-message-field msg "echo") "\n"))
         (princ (concat "At:      " (get-message-field msg "time") "\n"))
-        (princ (concat "Subject: " (get-message-field msg "subg") "\n"))
-        (princ (get-message-field msg "body"))))
+        (princ (concat "Subject: " (get-message-field msg "subj") "\n"))
+        (princ (concat "_______________________________\n\n"
+                       (get-message-field msg "body")))))
 
 (defun display-new-messages ()
     "Display new fetched messages from `new-messages-list'."
@@ -249,15 +250,15 @@ Not used if `idec-smart-fetching' is not nil."
         (switch-to-buffer "*IDEC: New messages*")
         (dolist (msg new-messages-list)
             ;; Write message subj
-            (insert-text-button (get-message-field msg "subg")
+            (insert-text-button (get-message-field msg "subj")
                                 'help-echo "Read message"
                                 'plain-msg msg
                                 'action (lambda (x) (display-message (button-get x 'plain-msg))))
             ;; Write message time and echo
-            (princ (format "\t\t\t%s\t%s(%s)\t%s\t\t\n"
+            (princ (format "\t\t\t%s(%s)\t%s\t%s\t\t\n"
                            (get-message-field msg "author")
-                           (get-message-field msg "echo")
                            (get-message-field msg "address")
+                           (get-message-field msg "echo")
                            (get-message-field msg "time")))
             (add-to-invisibility-spec '(msg . t)))))
 
@@ -357,7 +358,7 @@ with `idec-download-offset' and `idec-download-limit'."
     "Fetch echoes list from remote NODEURL."
         (proccess-echo-list (get-url-content nodeurl)))
 
-(defun idec-load-echoes ()
+(defun idec-online-browse ()
     "Load echoes list.txt from node `idec-primary-node'."
     (interactive)
     (idec-fetch-echo-list (concat idec-primary-node "list.txt")))
