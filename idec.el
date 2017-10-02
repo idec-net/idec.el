@@ -35,10 +35,9 @@
 
 ;; Not used
 (defcustom idec-nodes-list
-    '("http://idec.spline-online.tk/"
-      "https://ii-net.tk/ii/ii-point.php?q=/")
-    "List of IDEC nodes."
-    :type 'alist
+    "http://idec.spline-online.tk/,https://ii-net.tk/ii/ii-point.php?q=/"
+    "List(comma separated) of IDEC nodes."
+    :type 'string
     :group 'idec)
 
 (defcustom idec-primary-node nil
@@ -62,8 +61,8 @@
     :group 'idec)
 
 (defcustom idec-echo-subscriptions nil
-    "List of subribes echoes."
-    :type 'list
+    "List(comma separated) of subribtions."
+    :type 'string
     :group 'idec)
 
 (defcustom idec-mail-dir "~/.emacs.d/idec-mail"
@@ -96,24 +95,69 @@
 ;; FUNCTIONS
 ;; ;;;;;;;;;
 
+;; MAIL FUNCTIONS
+;; ;;;;;;;;;;;;;;
+
+(defun idec-create-mail-echo-dir (echo)
+    "Create ECHO directory inside idec-mail-dir."
+    (mkdir echo idec-mail-dir))
+    ;; (mkdir (concat idec-mail-dir (concat "/" echo))))
+
+;; END OF MAIL FUNCTIONS
+;; ;;;;;;;;;;;;;;;;;;;;;
+
 (defun idec-load-new-messages ()
-    "Load new messages from IDEC nodes Not implemented.")
+    "Load new messages from IDEC nodes Not implemented."
+    (interactive)
+    (download-subscriptions))
 
 ;; ECHOES FUNCTIONS
 ;; ;;;;;;;;;;;;;;;;
 
+(defun download-subscriptions ()
+    "Download subs."
+    (with-current-buffer
+            (url-retrieve-synchronously (make-echo-url (split-string idec-echo-subscriptions ",")))
+        (goto-char (point-min))
+        (re-search-forward "^$")
+        (forward-line)
+        (delete-region (point) (point-min))
+        (beginning-of-line)
+        (setq echo-start (point))
+        (goto-char (point-min))
+        (re-search-forward "^.+\..+$")
+        (setq echo-end (point))
+        (idec-create-mail-echo-dir (kill-region echo-start echo-end))
+        (display-subscriptions (buffer-string))))
+
+(defun idec-load-subscriptions ()
+    "Load messages id from subscriptions."
+    (with-current-buffer
+            (url-retrieve-synchronously (make-echo-url (split-string idec-echo-subscriptions ",")))
+        (goto-char (point-min))
+        (re-search-forward "^$")
+        (delete-region (point) (point-min))
+        (display-subscriptions (buffer-string))))
+
+(defun display-subscriptions (messages)
+    "Display downloaded MESSAGES from echo."
+    (with-output-to-temp-buffer (get-buffer-create "*IDEC: browse subs*")
+        (switch-to-buffer "*IDEC: browse subs*")
+        (princ messages)))
+
 (defun make-echo-url (echoes)
-    "Make ECHOES url to retreive messages."
+    "Make ECHOES url to retreive messages id."
+    (defvar echoes-seq (make-list 20 0) "temp sequence.")
     ;; Check ECHOES is list
     (if (listp echoes)
             ;; Required GNU Emacs >= 25.3
-            (message (concat idec-primary-node "u/e/"
-                             (string-join echoes "/") "/" idec-download-offset ":" idec-download-limit))
-        (message (concat idec-primary-node "u/e/" echoes "/" idec-download-offset ":" idec-download-limit))))
+            (concat idec-primary-node "u/e/"
+                             (string-join echoes "/") "/" idec-download-offset ":" idec-download-limit)
+        (concat idec-primary-node "u/e/" echoes "/" idec-download-offset ":" idec-download-limit)))
 
 (defun display-echo-messages (messages)
     "Display downloaded MESSAGES from echo."
-    (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: browse echo*"))
+    (with-output-to-temp-buffer (get-buffer-create "*IDEC: browse echo*")
         (switch-to-buffer "*IDEC: browse echo*")
         (princ messages)))
 
