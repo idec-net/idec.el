@@ -184,7 +184,7 @@ Not used if `idec-smart-fetching' is not nil."
 
 (defun check-message-in-echo (msg echo)
     "Check if exists message MSG in ECHO `idec-mail-dir'."
-    (not (file-exists-p (get-message-file echo msg))))
+    (not (f-file? (get-message-file echo msg))))
 
 ;; Message fields pasing
 (defun trim-string (string)
@@ -300,33 +300,35 @@ White space here is any of: space, tab, Emacs newline (line feed, ASCII 10)."
     "Display new fetched messages from `new-messages-list'."
     (with-output-to-temp-buffer (get-buffer-create "*IDEC: New messages*")
         (switch-to-buffer "*IDEC: New messages*")
-        (dolist (msg new-messages-list)
-            ;; Write message subj
-            (insert-text-button (concat (get-message-field msg "subj")
-                                        (make-string
-                                         (- (get-longest-field "subj" new-messages-list)
-                                            (length (get-message-field msg "subj")))
-                                         ? ))
-                                'help-echo "Read message"
-                                'plain-msg msg
-                                'action (lambda (x) (display-message (button-get x 'plain-msg))))
-            ;; Write message time and echo
-            (princ (format "  %s(%s)%s%s\t%s\n"
-                           (get-message-field msg "author")
-                           (get-message-field msg "address")
-                           (make-string (-
-                                         (+
-                                          (get-longest-field "author" new-messages-list)
-                                          (get-longest-field "address" new-messages-list)
-                                          1)
-                                         (+
-                                          (length (get-message-field msg "author"))
-                                          (length (get-message-field msg "address")))
-                                         )
-                                        ? )
-                           (get-message-field msg "echo")
-                           (get-message-field msg "time")))
-            (add-to-invisibility-spec '(msg . t)))))
+        (if (= (length new-messages-list) 0)
+                (princ "No new messages.")
+            (dolist (msg new-messages-list)
+                ;; Write message subj
+                (insert-text-button (concat (get-message-field msg "subj")
+                                            (make-string
+                                             (- (get-longest-field "subj" new-messages-list)
+                                                (length (get-message-field msg "subj")))
+                                             ? ))
+                                    'help-echo "Read message"
+                                    'plain-msg msg
+                                    'action (lambda (x) (display-message (button-get x 'plain-msg))))
+                ;; Write message time and echo
+                (princ (format "  %s(%s)%s%s\t%s\n"
+                               (get-message-field msg "author")
+                               (get-message-field msg "address")
+                               (make-string (-
+                                             (+
+                                              (get-longest-field "author" new-messages-list)
+                                              (get-longest-field "address" new-messages-list)
+                                              1)
+                                             (+
+                                              (length (get-message-field msg "author"))
+                                              (length (get-message-field msg "address")))
+                                             )
+                                            ? )
+                               (get-message-field msg "echo")
+                               (get-message-field msg "time")))
+                (add-to-invisibility-spec '(msg . t))))))
 
 (defun get-message-content (echo msg)
     "Get ECHO MSG content from `idec-primary-node'."
