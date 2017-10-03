@@ -71,7 +71,7 @@ Not used if `idec-smart-fetching' is not nil."
 
 (defcustom idec-echo-subscriptions nil
     "List of subribes echoes."
-    :type 'list
+    :type 'string
     :group 'idec)
 
 (defcustom idec-mail-dir "~/.emacs.d/idec-mail"
@@ -123,23 +123,54 @@ Not used if `idec-smart-fetching' is not nil."
     "Close buffer with message."
     (kill-buffer (current-buffer)))
 
-(defvar idec-mode-map nil
+(defvar idec-mode-hook nil)
+
+(defvar idec-mode-map
+    (let ((map (make-keymap)))
+        (define-key map "\C-c \C-c" 'kill-this-buffer)
+        map)
     "Keymapping for IDEC mode.")
 
-(unless idec-mode-map
-    (let ((map (make-sparse-keymap)))
-        (define-key map "\C-c ." 'idec-close-message-buffer)
-        (setq idec-mode-map map)))
+(defconst idec-font-lock-keywords-1
+  (list
+   '("\\<\\(\\(?:Echo\\|From\\|Subj\\|T\\(?:ime\\|o\\)\\):\\)\\>" . font-lock-variable-name-face)
+   '("\\('\\w*'\\)" . font-lock-variable-name-face))
+  "Minimal highlighting expressions for IDEC mode.")
 
-(define-derived-mode idec-mode
-    text-mode "[idec]"
+(defconst idec-font-lock-keywords-2
+    (append idec-font-lock-keywords-1 (list
+                                       '("\\<\\(>>?.*\\)\s\\>" . font-lock-comment-face)
+                                       '("\\('\\w*'\\)" . font-lock-variable-name-face)))
+    "Quotes highligting for IDEC mode.")
+
+(defvar idec-font-lock-keywords idec-font-lock-keywords-2
+    "Default highlighting expressions for WPDL mode.")
+
+(defvar idec-mode-syntax-table
+    (let ((st (make-syntax-table)))))
+
+(defun idec-mode ()
     "Major mode for view and editing IDEC messages."
+    (interactive)
     (kill-all-local-variables)
     ;; Mode definition
-    (setq major-mode 'idec-mode)
-    (setq mode-name "[idec]")
+    ;; (set-syntax-table idec-mode-syntax-table)
     (use-local-map idec-mode-map)
-    (setq imenu-generic-expression "*IDEC"))
+    (set (make-local-variable 'font-lock-defaults) '(idec-font-lock-keywords))
+    (setq major-mode 'idec-mode)
+    (setq mode-name "[IDEC]")
+    (setq imenu-generic-expression "*IDEC")
+    (run-hooks 'idec-mode-hook))
+
+;; (define-derived-mode idec-mode
+;;     text-mode "[idec]"
+;;     "Major mode for view and editing IDEC messages."
+;;     (kill-all-local-variables)
+;;     ;; Mode definition
+;;     (setq major-mode 'idec-mode)
+;;     (setq mode-name "[idec]")
+;;     (use-local-map idec-mode-map)
+;;     (setq imenu-generic-expression "*IDEC"))
 
 ;; END OF MODE
 ;; ;;;;;;;;;;;
@@ -218,12 +249,25 @@ White space here is any of: space, tab, Emacs newline (line feed, ASCII 10)."
     (trim-string (nth 5 (split-string msg "\n"))))
 
 (defun get-message-subj (msg)
-    "Get MSG recipient."
+    "Get MSG subject."
     (trim-string (nth 6 (split-string msg "\n"))))
 
 (defun get-message-body (msg)
     "Get MSG body text."
-    (s-join "\n" (last (split-string msg "\n") 6)))
+    (goto-char (point-min))
+    (forward-line 8)
+    (substring msg (point) (point-max)))
+    ;; (s-join "\n" (last (split-string msg "\n") 7)))
+    ;; (defvar msg-counter 1)
+    ;; (defvar msg-body '())
+    ;; (defvar msg-list (split-string msg "\n"))
+    ;; (dolist (line msg-list)
+    ;;     (if (not (= msg-counter 7))
+    ;;             (setq msg-counter (1+ msg-counter))
+    ;;         (setq msg-body (append msg-body '(line)))))
+    ;; (dolist (b msg-body)
+    ;;     (message b))
+    ;; (s-join "\n" msg-body))
 
 (defun get-longest-field (field msg-list)
     "Return longest FIELD in MSG-LIST."
@@ -283,9 +327,12 @@ White space here is any of: space, tab, Emacs newline (line feed, ASCII 10)."
 
 (defun display-message (msg)
     "Display message MSG in new buffer in idec-mode."
-    (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: view " (get-message-field msg "subj") "*"))
+    (with-output-to-temp-buffer (get-buffer-create (concat
+                                                    "*IDEC: "
+                                                    (decode-coding-string (get-message-field msg "subj") 'utf-8)
+                                                    "*"))
         ;; Run in IDEC mode
-        (switch-to-buffer (concat "*IDEC: view " (get-message-field msg "subj") "*"))
+        (switch-to-buffer (concat "*IDEC: " (decode-coding-string (get-message-field msg "subj") 'utf-8) "*"))
         (princ (concat "From:    " (get-message-field msg "author") "(" (get-message-field msg "address") ")" "\n"))
         (princ (concat "To:      " (get-message-field msg "recipient") "\n"))
         (princ (concat "Echo:    " (get-message-field msg "echo") "\n"))
@@ -293,7 +340,16 @@ White space here is any of: space, tab, Emacs newline (line feed, ASCII 10)."
         (princ (concat "Subject: " (get-message-field msg "subj") "\n"))
         (princ (concat "__________________________________\n\n"
                        (get-message-field msg "body")))
+        (princ "\n__________________________________\n")
+        (princ "[")
+        (insert-button "Answer"
+                       'action (lambda (x) (message "OK")))
+        (princ "]")
+        (princ "\t[")
+        (insert-button "Answer with quote")
+        (princ "]")
         (add-text-properties (point-min) (point-max) 'read-only))
+    (point-max)
     (idec-mode))
 
 (defun display-new-messages ()
@@ -328,7 +384,8 @@ White space here is any of: space, tab, Emacs newline (line feed, ASCII 10)."
                                             ? )
                                (get-message-field msg "echo")
                                (get-message-field msg "time")))
-                (add-to-invisibility-spec '(msg . t))))))
+                (add-to-invisibility-spec '(msg . t)))))
+    (idec-mode))
 
 (defun get-message-content (echo msg)
     "Get ECHO MSG content from `idec-primary-node'."
