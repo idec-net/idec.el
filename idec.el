@@ -110,7 +110,7 @@ Not used if `idec-smart-fetching' is not nil."
 (defvar smart-download-offset nil
     "Used with `idec-smart-fetch'.")
 
-(defvar new-messages-list '()
+(defvar new-messages-list nil
     "New messages for display.")
 
 ;; END OF VARIABLES
@@ -156,7 +156,7 @@ Not used if `idec-smart-fetching' is not nil."
     (interactive)
     (kill-all-local-variables)
     ;; Mode definition
-    (set-syntax-table idec-mode-syntax-table)
+    ;; (set-syntax-table idec-mode-syntax-table)
     (use-local-map idec-mode-map)
     (set (make-local-variable 'font-lock-defaults) '(idec-font-lock-keywords))
     (setq major-mode 'idec-mode)
@@ -275,9 +275,9 @@ Return list with body content."
     (defvar field-max nil)
     (setq field-max 0)
     (dolist (msg msg-list)
-        (when (> (length (get-message-field msg field))
+        (when (> (length (get-message-field (cdr (assoc 'content msg)) field))
                  field-max)
-            (setq field-max (length (get-message-field msg field)))))
+            (setq field-max (length (get-message-field (cdr (assoc 'content msg)) field)))))
     field-max)
 
 (defun get-message-field (msg field)
@@ -311,31 +311,38 @@ Return list with body content."
     (interactive)
     (defvar current-echo nil)
     (defvar new-messages '())
-    (let (new-messages-list)
-        (dolist (line (split-string (download-subscriptions) "\n"))
-            (if (string-match "\\." line)
-                    (and (setq current-echo line)
-                         (store-echo-counter line))
-                (when (and (check-message-in-echo line current-echo)
-                           (> (length line) 1))
-                    (download-message current-echo line)))))
+    (dolist (line (split-string (download-subscriptions) "\n"))
+        (if (string-match "\\." line)
+                (and (setq current-echo line)
+                     (store-echo-counter line))
+            (when (and (check-message-in-echo line current-echo)
+                       (> (length line) 1))
+                (download-message current-echo line))))
     (display-new-messages))
+
+(defun answer-message (msg)
+    "Make answer to message MSG."
+    (get-buffer-create (concat "*IDEC: Answer to " (cdr (assoc 'id msg))))
+    (switch-to-buffer (concat "*IDEC: Answer to " (cdr (assoc 'id msg)))))
 
 (defun display-message (msg)
     "Display message MSG in new buffer in idec-mode."
     (with-output-to-temp-buffer (get-buffer-create (concat
                                                     "*IDEC: "
-                                                    (decode-coding-string (get-message-field msg "subj") 'utf-8)
+                                                    (decode-coding-string
+                                                     (get-message-field
+                                                      (cdr (assoc 'content msg)) "subj")
+                                                     'utf-8)
                                                     "*"))
         ;; Run in IDEC mode
-        (switch-to-buffer (concat "*IDEC: " (decode-coding-string (get-message-field msg "subj") 'utf-8) "*"))
-        (princ (concat "From:    " (get-message-field msg "author") "(" (get-message-field msg "address") ")" "\n"))
-        (princ (concat "To:      " (get-message-field msg "recipient") "\n"))
-        (princ (concat "Echo:    " (get-message-field msg "echo") "\n"))
-        (princ (concat "At:      " (get-message-field msg "time") "\n"))
-        (princ (concat "Subject: " (get-message-field msg "subj") "\n"))
+        (switch-to-buffer (concat "*IDEC: " (decode-coding-string (get-message-field (cdr (assoc 'content msg)) "subj") 'utf-8) "*"))
+        (princ (concat "From:    " (get-message-field (cdr (assoc 'content msg)) "author") "(" (get-message-field (cdr (assoc 'content msg)) "address") ")" "\n"))
+        (princ (concat "To:      " (get-message-field (cdr (assoc 'content msg)) "recipient") "\n"))
+        (princ (concat "Echo:    " (get-message-field (cdr (assoc 'content msg)) "echo") "\n"))
+        (princ (concat "At:      " (get-message-field (cdr (assoc 'content msg)) "time") "\n"))
+        (princ (concat "Subject: " (get-message-field (cdr (assoc 'content msg)) "subj") "\n"))
         (princ (concat "__________________________________\n\n"
-                       (s-join "\n" (get-message-field msg "body"))))
+                       (s-join "\n" (get-message-field (assoc 'content msg) "body"))))
         (princ "\n__________________________________\n")
         (princ "[")
         (insert-button "Answer"
@@ -354,33 +361,34 @@ Return list with body content."
         (switch-to-buffer "*IDEC: New messages*")
         (if (= (length new-messages-list) 0)
                 (princ "No new messages.")
-            (dolist (msg new-messages-list)
+            (dolist (msg (reverse new-messages-list))
                 ;; Write message subj
-                (insert-text-button (concat (get-message-field msg "subj")
+                (insert-text-button (concat (get-message-field (cdr (assoc 'content msg)) "subj")
                                             (make-string
                                              (- (get-longest-field "subj" new-messages-list)
-                                                (length (get-message-field msg "subj")))
+                                                (length (get-message-field (cdr (assoc 'content msg)) "subj")))
                                              ? ))
                                     'help-echo "Read message"
-                                    'plain-msg msg
-                                    'action (lambda (x) (display-message (button-get x 'plain-msg))))
+                                    ;; 'plain-msg msg
+                                    'action (lambda (x) (display-message msg;; (button-get x 'plain-msg)
+                                                                         )))
                 ;; Write message time and echo
                 (princ (format "  %s(%s)%s%s\t%s\n"
-                               (get-message-field msg "author")
-                               (get-message-field msg "address")
+                               (get-message-field (cdr (assoc 'content msg)) "author")
+                               (get-message-field (cdr (assoc 'content msg)) "address")
                                (make-string (-
                                              (+
                                               (get-longest-field "author" new-messages-list)
                                               (get-longest-field "address" new-messages-list)
                                               1)
                                              (+
-                                              (length (get-message-field msg "author"))
-                                              (length (get-message-field msg "address")))
+                                              (length (get-message-field (cdr (assoc 'content msg)) "author"))
+                                              (length (get-message-field (cdr (assoc 'content msg)) "address")))
                                              )
                                             ? )
-                               (get-message-field msg "echo")
-                               (get-message-field msg "time")))
-                (add-to-invisibility-spec '(msg . t)))))
+                               (get-message-field (cdr (assoc 'content msg)) "echo")
+                               (get-message-field (cdr (assoc 'content msg)) "time")))
+                (add-to-invisibility-spec '((cdr (assoc 'content msg)) . t)))))
     (idec-mode))
 
 (defun get-message-content (echo msg)
@@ -400,7 +408,12 @@ Return list with body content."
                    (check-message-in-echo msg echo))
             (setq message-content (get-message-content echo msg))
             (store-message message-content echo msg)
-            (setq new-messages-list (push message-content new-messages-list)))))
+            (setq new-messages-list (-concat
+                                     'new-messages-list
+                                     '(
+                                       (content . message-content)
+                                       (id . msg))
+                                     )))))
 
 (defun download-subscriptions ()
     "Download messages from echoes defined in `idec-echo-subscriptions' from `idec-primary-node'."
@@ -464,7 +477,7 @@ with `idec-download-offset' and `idec-download-limit'."
             (when (not (equal line ""))
                 ;; Defind echo
                 (defvar current-echo nil)
-                (setq current-echo (nth 0 (split-string line ":")))
+                (setq current-echo (assoc 'content (split-string line ":")))
                 ;; Create clickable button
                 (insert-text-button current-echo
                                     'action (lambda (x) (load-echo-messages (button-get x 'echo)))
