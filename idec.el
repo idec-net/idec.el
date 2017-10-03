@@ -121,13 +121,15 @@ Not used if `idec-smart-fetching' is not nil."
 
 (defun idec-close-message-buffer ()
     "Close buffer with message."
-    (kill-buffer (current-buffer)))
+    (kill-this-buffer))
 
 (defvar idec-mode-hook nil)
 
 (defvar idec-mode-map
     (let ((map (make-keymap)))
         (define-key map "\C-c \C-c" 'kill-this-buffer)
+        (define-key map "\C-c \C-n" 'idec-next-message)
+        (define-key map "\C-c \C-b" 'idec-previous-message)
         map)
     "Keymapping for IDEC mode.")
 
@@ -144,7 +146,7 @@ Not used if `idec-smart-fetching' is not nil."
     "Quotes highligting for IDEC mode.")
 
 (defvar idec-font-lock-keywords idec-font-lock-keywords-2
-    "Default highlighting expressions for WPDL mode.")
+    "Default highlighting expressions for IDEC mode.")
 
 (defvar idec-mode-syntax-table
     (let ((st (make-syntax-table)))))
@@ -154,7 +156,7 @@ Not used if `idec-smart-fetching' is not nil."
     (interactive)
     (kill-all-local-variables)
     ;; Mode definition
-    ;; (set-syntax-table idec-mode-syntax-table)
+    (set-syntax-table idec-mode-syntax-table)
     (use-local-map idec-mode-map)
     (set (make-local-variable 'font-lock-defaults) '(idec-font-lock-keywords))
     (setq major-mode 'idec-mode)
@@ -162,15 +164,25 @@ Not used if `idec-smart-fetching' is not nil."
     (setq imenu-generic-expression "*IDEC")
     (run-hooks 'idec-mode-hook))
 
-;; (define-derived-mode idec-mode
-;;     text-mode "[idec]"
-;;     "Major mode for view and editing IDEC messages."
-;;     (kill-all-local-variables)
-;;     ;; Mode definition
-;;     (setq major-mode 'idec-mode)
-;;     (setq mode-name "[idec]")
-;;     (use-local-map idec-mode-map)
-;;     (setq imenu-generic-expression "*IDEC"))
+;; NAVIGATION FUNCTIONS
+;; ;;;;;;;;;;;;;;;;;;;;
+
+(defun idec-next-message ()
+    "Show next message."
+    (interactive)
+    (kill-this-buffer)
+    (forward-button 1)
+    (push-button))
+
+(defun idec-previous-message ()
+    "Show next message."
+    (interactive)
+    (kill-this-buffer)
+    (backward-button 1)
+    (push-button))
+
+;; END OF NAVIGATION FUNCTIONS
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; END OF MODE
 ;; ;;;;;;;;;;;
@@ -253,21 +265,9 @@ White space here is any of: space, tab, Emacs newline (line feed, ASCII 10)."
     (trim-string (nth 6 (split-string msg "\n"))))
 
 (defun get-message-body (msg)
-    "Get MSG body text."
-    (goto-char (point-min))
-    (forward-line 8)
-    (substring msg (point) (point-max)))
-    ;; (s-join "\n" (last (split-string msg "\n") 7)))
-    ;; (defvar msg-counter 1)
-    ;; (defvar msg-body '())
-    ;; (defvar msg-list (split-string msg "\n"))
-    ;; (dolist (line msg-list)
-    ;;     (if (not (= msg-counter 7))
-    ;;             (setq msg-counter (1+ msg-counter))
-    ;;         (setq msg-body (append msg-body '(line)))))
-    ;; (dolist (b msg-body)
-    ;;     (message b))
-    ;; (s-join "\n" msg-body))
+    "Get MSG body text.
+Return list with body content."
+    (-drop 8 (split-string msg "\n")))
 
 (defun get-longest-field (field msg-list)
     "Return longest FIELD in MSG-LIST."
@@ -278,12 +278,7 @@ White space here is any of: space, tab, Emacs newline (line feed, ASCII 10)."
         (when (> (length (get-message-field msg field))
                  field-max)
             (setq field-max (length (get-message-field msg field)))))
-    field-max
-    ;; Populate list
-    ;; (dolist (msg msg-list)
-    ;;     (setq field-legth (append field-legth (length (get-message-field msg field)))))
-    ;; (last (sort field-legth '<))
-    )
+    field-max)
 
 (defun get-message-field (msg field)
     "Get message MSG FIELD."
@@ -316,13 +311,14 @@ White space here is any of: space, tab, Emacs newline (line feed, ASCII 10)."
     (interactive)
     (defvar current-echo nil)
     (defvar new-messages '())
-    (dolist (line (split-string (download-subscriptions) "\n"))
-        (if (string-match "\\." line)
-                (and (setq current-echo line)
-                     (store-echo-counter line))
-            (when (and (check-message-in-echo line current-echo)
-                       (> (length line) 1))
-                (download-message current-echo line))))
+    (let (new-messages-list)
+        (dolist (line (split-string (download-subscriptions) "\n"))
+            (if (string-match "\\." line)
+                    (and (setq current-echo line)
+                         (store-echo-counter line))
+                (when (and (check-message-in-echo line current-echo)
+                           (> (length line) 1))
+                    (download-message current-echo line)))))
     (display-new-messages))
 
 (defun display-message (msg)
@@ -339,7 +335,7 @@ White space here is any of: space, tab, Emacs newline (line feed, ASCII 10)."
         (princ (concat "At:      " (get-message-field msg "time") "\n"))
         (princ (concat "Subject: " (get-message-field msg "subj") "\n"))
         (princ (concat "__________________________________\n\n"
-                       (get-message-field msg "body")))
+                       (s-join "\n" (get-message-field msg "body"))))
         (princ "\n__________________________________\n")
         (princ "[")
         (insert-button "Answer"
