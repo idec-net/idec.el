@@ -274,10 +274,11 @@ Return list with body content."
     (defvar field-legth '())
     (defvar field-max nil)
     (setq field-max 0)
-    (dolist (msg msg-list)
-        (when (> (length (get-message-field (cdr (assoc 'content msg)) field))
+    (maphash (lambda (id msg)
+        (when (> (length (get-message-field msg field))
                  field-max)
-            (setq field-max (length (get-message-field (cdr (assoc 'content msg)) field)))))
+            (setq field-max (length (get-message-field msg field)))))
+             msg-list)
     field-max)
 
 (defun get-message-field (msg field)
@@ -311,6 +312,7 @@ Return list with body content."
     (interactive)
     (defvar current-echo nil)
     (defvar new-messages '())
+    (setq new-messages-list (make-hash-table :test 'equal))
     (dolist (line (split-string (download-subscriptions) "\n"))
         (if (string-match "\\." line)
                 (and (setq current-echo line)
@@ -318,7 +320,10 @@ Return list with body content."
             (when (and (check-message-in-echo line current-echo)
                        (> (length line) 1))
                 (download-message current-echo line))))
-    (display-new-messages))
+    ;; (print (hash-table-count new-messages-list))
+    ;; (message (gethash "id" (nth 0 new-messages-list)))
+    (display-new-messages)
+    )
 
 (defun answer-message (msg)
     "Make answer to message MSG."
@@ -359,36 +364,36 @@ Return list with body content."
     "Display new fetched messages from `new-messages-list'."
     (with-output-to-temp-buffer (get-buffer-create "*IDEC: New messages*")
         (switch-to-buffer "*IDEC: New messages*")
-        (if (= (length new-messages-list) 0)
+        (if (= (hash-table-count new-messages-list) 0)
                 (princ "No new messages.")
-            (dolist (msg (reverse new-messages-list))
+            (maphash (lambda (id msg)
                 ;; Write message subj
-                (insert-text-button (concat (get-message-field (cdr (assoc 'content msg)) "subj")
+                (insert-text-button (concat (get-message-field msg "subj")
                                             (make-string
                                              (- (get-longest-field "subj" new-messages-list)
-                                                (length (get-message-field (cdr (assoc 'content msg)) "subj")))
+                                                (length (get-message-field msg "subj")))
                                              ? ))
                                     'help-echo "Read message"
-                                    ;; 'plain-msg msg
+                                    'plain-msg msg
                                     'action (lambda (x) (display-message msg;; (button-get x 'plain-msg)
                                                                          )))
                 ;; Write message time and echo
                 (princ (format "  %s(%s)%s%s\t%s\n"
-                               (get-message-field (cdr (assoc 'content msg)) "author")
-                               (get-message-field (cdr (assoc 'content msg)) "address")
+                               (get-message-field msg "author")
+                               (get-message-field msg "address")
                                (make-string (-
                                              (+
                                               (get-longest-field "author" new-messages-list)
                                               (get-longest-field "address" new-messages-list)
                                               1)
                                              (+
-                                              (length (get-message-field (cdr (assoc 'content msg)) "author"))
-                                              (length (get-message-field (cdr (assoc 'content msg)) "address")))
+                                              (length (get-message-field msg "author"))
+                                              (length (get-message-field msg "address")))
                                              )
                                             ? )
-                               (get-message-field (cdr (assoc 'content msg)) "echo")
-                               (get-message-field (cdr (assoc 'content msg)) "time")))
-                (add-to-invisibility-spec '((cdr (assoc 'content msg)) . t)))))
+                               (get-message-field msg "echo")
+                               (get-message-field msg "time"))))
+                     new-messages-list)))
     (idec-mode))
 
 (defun get-message-content (echo msg)
@@ -408,12 +413,15 @@ Return list with body content."
                    (check-message-in-echo msg echo))
             (setq message-content (get-message-content echo msg))
             (store-message message-content echo msg)
-            (setq new-messages-list (-concat
-                                     'new-messages-list
-                                     '(
-                                       (content . message-content)
-                                       (id . msg))
-                                     )))))
+
+            (puthash msg message-content new-messages-list)
+            ;; (setq new-messages-list (-concat
+            ;;                          'new-messages-list
+            ;;                          '(
+            ;;                            (content . message-content)
+            ;;                            (id . msg))
+            ;;                          ))
+            )))
 
 (defun download-subscriptions ()
     "Download messages from echoes defined in `idec-echo-subscriptions' from `idec-primary-node'."
