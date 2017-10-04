@@ -134,10 +134,10 @@ Not used if `idec-smart-fetching' is not nil."
     "Keymapping for IDEC mode.")
 
 (defconst idec-font-lock-keywords-1
-  (list
-   '("\\<\\(\\(?:Echo\\|From\\|Subj\\|T\\(?:ime\\|o\\)\\):\\)\\>" . font-lock-variable-name-face)
-   '("\\('\\w*'\\)" . font-lock-variable-name-face))
-  "Minimal highlighting expressions for IDEC mode.")
+    (list
+     '("\\(ID:.*\\)" . font-lock-function-name-face)
+     '("\\<\\(\\(?:Echo\\|From\\|Subj\\|T\\(?:ime\\|o\\)\\):\\)\\>" . font-lock-function-name-face))
+    "Minimal highlighting expressions for IDEC mode.")
 
 (defconst idec-font-lock-keywords-2
     (append idec-font-lock-keywords-1 (list
@@ -149,7 +149,7 @@ Not used if `idec-smart-fetching' is not nil."
     "Default highlighting expressions for IDEC mode.")
 
 (defvar idec-mode-syntax-table
-    (let ((st (make-syntax-table)))))
+    (make-syntax-table text-mode-syntax-table))
 
 (defun idec-mode ()
     "Major mode for view and editing IDEC messages."
@@ -158,6 +158,7 @@ Not used if `idec-smart-fetching' is not nil."
     ;; Mode definition
     ;; (set-syntax-table idec-mode-syntax-table)
     (use-local-map idec-mode-map)
+    (font-lock-add-keywords 'idec-mode '(idec-font-lock-keywords))
     (set (make-local-variable 'font-lock-defaults) '(idec-font-lock-keywords))
     (setq major-mode 'idec-mode)
     (setq mode-name "[IDEC]")
@@ -311,15 +312,18 @@ Return list with body content."
     "Load new messages from IDEC `idec-primary-node'."
     (interactive)
     (defvar current-echo nil)
-    (defvar new-messages '())
     (setq new-messages-list (make-hash-table :test 'equal))
-    (dolist (line (split-string (download-subscriptions) "\n"))
-        (if (string-match "\\." line)
-                (and (setq current-echo line)
-                     (store-echo-counter line))
-            (when (and (check-message-in-echo line current-echo)
-                       (> (length line) 1))
-                (download-message current-echo line))))
+    (let (msgid-for-download)
+        (setq msgid-for-download (make-hash-table :test 'equal))
+        (dolist (line (split-string (download-subscriptions) "\n"))
+            (if (string-match "\\." line)
+                    (and (setq current-echo line)
+                         (store-echo-counter line))
+                (when (and (check-message-in-echo line current-echo)
+                           (> (length line) 1))
+                    (when (not (string= "" line))
+                        (puthash line current-echo msgid-for-download)))))
+        (download-message msgid-for-download))
     ;; (print (hash-table-count new-messages-list))
     ;; (message (gethash "id" (nth 0 new-messages-list)))
     (display-new-messages)
@@ -332,22 +336,26 @@ Return list with body content."
 
 (defun display-message (msg)
     "Display message MSG in new buffer in idec-mode."
-    (with-output-to-temp-buffer (get-buffer-create (concat
-                                                    "*IDEC: "
+    (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: "
                                                     (decode-coding-string
                                                      (get-message-field
-                                                      (cdr (assoc 'content msg)) "subj")
+                                                      (gethash "msg" msg) "subj")
                                                      'utf-8)
                                                     "*"))
         ;; Run in IDEC mode
-        (switch-to-buffer (concat "*IDEC: " (decode-coding-string (get-message-field (cdr (assoc 'content msg)) "subj") 'utf-8) "*"))
-        (princ (concat "From:    " (get-message-field (cdr (assoc 'content msg)) "author") "(" (get-message-field (cdr (assoc 'content msg)) "address") ")" "\n"))
-        (princ (concat "To:      " (get-message-field (cdr (assoc 'content msg)) "recipient") "\n"))
-        (princ (concat "Echo:    " (get-message-field (cdr (assoc 'content msg)) "echo") "\n"))
-        (princ (concat "At:      " (get-message-field (cdr (assoc 'content msg)) "time") "\n"))
-        (princ (concat "Subject: " (get-message-field (cdr (assoc 'content msg)) "subj") "\n"))
+        (switch-to-buffer (concat "*IDEC: " (decode-coding-string (get-message-field
+                                                                   (gethash "msg" msg) "subj")
+                                                                  'utf-8)
+                                  "*"))
+        (princ (concat "ID:      " (gethash "id" msg) "\n"))
+        (princ (concat "From:    " (get-message-field (gethash "msg" msg) "author") "("
+                       (get-message-field (gethash "msg" msg) "address") ")" "\n"))
+        (princ (concat "To:      " (get-message-field (gethash "msg" msg) "recipient") "\n"))
+        (princ (concat "Echo:    " (get-message-field (gethash "msg" msg) "echo") "\n"))
+        (princ (concat "At:      " (get-message-field (gethash "msg" msg) "time") "\n"))
+        (princ (concat "Subject: " (get-message-field (gethash "msg" msg) "subj") "\n"))
         (princ (concat "__________________________________\n\n"
-                       (s-join "\n" (get-message-field (assoc 'content msg) "body"))))
+                       (s-join "\n" (get-message-field (gethash "msg" msg) "body"))))
         (princ "\n__________________________________\n")
         (princ "[")
         (insert-button "Answer"
@@ -367,64 +375,77 @@ Return list with body content."
         (if (= (hash-table-count new-messages-list) 0)
                 (princ "No new messages.")
             (maphash (lambda (id msg)
-                ;; Write message subj
-                (insert-text-button (concat (get-message-field msg "subj")
-                                            (make-string
-                                             (- (get-longest-field "subj" new-messages-list)
-                                                (length (get-message-field msg "subj")))
-                                             ? ))
-                                    'help-echo "Read message"
-                                    'plain-msg msg
-                                    'action (lambda (x) (display-message msg;; (button-get x 'plain-msg)
-                                                                         )))
-                ;; Write message time and echo
-                (princ (format "  %s(%s)%s%s\t%s\n"
-                               (get-message-field msg "author")
-                               (get-message-field msg "address")
-                               (make-string (-
-                                             (+
-                                              (get-longest-field "author" new-messages-list)
-                                              (get-longest-field "address" new-messages-list)
-                                              1)
-                                             (+
-                                              (length (get-message-field msg "author"))
-                                              (length (get-message-field msg "address")))
-                                             )
-                                            ? )
-                               (get-message-field msg "echo")
-                               (get-message-field msg "time"))))
+                         (let (m)
+                             (setq m (make-hash-table :test 'equal))
+                             (puthash "id" id m)
+                             (puthash "msg" msg m)
+                             ;; Write message subj
+                             (insert-text-button (concat (get-message-field msg "subj")
+                                                         (make-string
+                                                          (- (get-longest-field "subj" new-messages-list)
+                                                             (length (get-message-field msg "subj")))
+                                                          ? ))
+                                                 'help-echo "Read message"
+                                                 'msg-hash m
+                                                 'action (lambda (x) (display-message (button-get x 'msg-hash)))))
+                         ;; Write message time and echo
+                         (princ (format "  %s(%s)%s%s\t%s\n"
+                                        (get-message-field msg "author")
+                                        (get-message-field msg "address")
+                                        (make-string (-
+                                                      (+
+                                                       (get-longest-field "author" new-messages-list)
+                                                       (get-longest-field "address" new-messages-list)
+                                                       1)
+                                                      (+
+                                                       (length (get-message-field msg "author"))
+                                                       (length (get-message-field msg "address")))
+                                                      )
+                                                     ? )
+                                        (get-message-field msg "echo")
+                                        (get-message-field msg "time"))))
                      new-messages-list)))
     (idec-mode))
 
-(defun get-message-content (echo msg)
-    "Get ECHO MSG content from `idec-primary-node'."
-    (decode-coding-string
-     (base64-decode-string
-      (nth 1 (split-string (get-url-content (make-messages-url msg)) ":")))
-     'utf-8))
+(defun get-messages-content (messages)
+    "Get MESSAGES content from `idec-primary-node'."
+    (defvar msg-ids '())
+    (let (new-hash)
+        (setq new-hash (make-hash-table :test 'equal))
+        (maphash (lambda (msgid echo)
+                     (add-to-list 'msg-ids msgid)
+                     (message (concat "Download message " msgid " to " echo)))
+                 messages)
+        (message (make-messages-url msg-ids))
+        (dolist (line (split-string (get-url-content (make-messages-url msg-ids)) "\n"))
+            (when (not (string= "" line))
+                (let (msgid content mes)
+                    (setq mes (make-hash-table :test 'equal))
+                    (setq msgid (nth 0 (split-string line ":")))
+                    (setq content
+                          (decode-coding-string
+                           (base64-decode-string
+                            (nth 1 (split-string line ":")))
+                           'utf-8))
+                    ;; Populate message hash: {"echo": "echo name", "content": "message content"}
+                    (puthash "echo" (get-message-field content "echo") mes)
+                    (puthash "content" content mes)
+                    (puthash msgid mes new-hash))))
+        new-hash))
 
-(defun download-message (echo msg)
-    "Download ECHO message MSG to `idec-mail-dir'."
-    (message (concat "Download message " msg " to " echo))
-    (defvar message-content)
-    (if (string= "" msg)
-            (message "Nil message")
-        (when (and (not (string= "" msg))
-                   (check-message-in-echo msg echo))
-            (setq message-content (get-message-content echo msg))
-            (store-message message-content echo msg)
-
-            (puthash msg message-content new-messages-list)
-            ;; (setq new-messages-list (-concat
-            ;;                          'new-messages-list
-            ;;                          '(
-            ;;                            (content . message-content)
-            ;;                            (id . msg))
-            ;;                          ))
-            )))
+(defun download-message (ids)
+    "Download messages with IDS to `idec-mail-dir'."
+    (if (= (hash-table-count ids) 0)
+            nil
+        (maphash (lambda (id msg)
+                     (store-message (gethash "content" msg) (gethash "echo" msg) id)
+                     (puthash id (gethash "content" msg) new-messages-list))
+                 (get-messages-content ids))))
 
 (defun download-subscriptions ()
     "Download messages from echoes defined in `idec-echo-subscriptions' from `idec-primary-node'."
+    (message (make-echo-url (split-string idec-echo-subscriptions ",")))
+    (message idec-echo-subscriptions)
     (get-url-content
      (make-echo-url (split-string idec-echo-subscriptions ","))))
 
@@ -446,8 +467,13 @@ with `idec-download-offset' and `idec-download-limit'."
     ;; Check ECHOES is list
     (if (listp messages)
             ;; Required GNU Emacs >= 25.3
-            (message (concat idec-primary-node "u/m/"
-                    (s-join "/" messages)))
+            (let (msgs)
+                (dolist (msg messages)
+                    (setq msgs (concat msgs "/" msg)))
+                (message msgs)
+                (concat idec-primary-node "u/m/" msgs
+                    ;; (s-join "/" messages)
+                    ))
         (message (concat idec-primary-node "u/m/" messages))))
 
 (defun make-count-url (echo)
