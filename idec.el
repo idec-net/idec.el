@@ -370,10 +370,11 @@ Return list with body content."
 
 (defun display-new-messages ()
     "Display new fetched messages from `new-messages-list'."
-    (with-output-to-temp-buffer (get-buffer-create "*IDEC: New messages*")
-        (switch-to-buffer "*IDEC: New messages*")
-        (if (= (hash-table-count new-messages-list) 0)
-                (princ "No new messages.")
+    (if (= (hash-table-count new-messages-list) 0)
+            (message "IDEC: No new messages.")
+        (with-output-to-temp-buffer (get-buffer-create "*IDEC: New messages*")
+            (switch-to-buffer "*IDEC: New messages*")
+
             (maphash (lambda (id msg)
                          (let (m)
                              (setq m (make-hash-table :test 'equal))
@@ -404,8 +405,8 @@ Return list with body content."
                                                      ? )
                                         (get-message-field msg "echo")
                                         (get-message-field msg "time"))))
-                     new-messages-list)))
-    (idec-mode))
+                     new-messages-list))
+        (idec-mode)))
 
 (defun get-messages-content (messages)
     "Get MESSAGES content from `idec-primary-node'."
@@ -464,7 +465,7 @@ with `idec-download-offset' and `idec-download-limit'."
 
 (defun make-messages-url (messages)
     "Make MESSAGES url to retreive messages from `idec-primary-node'."
-    ;; Check ECHOES is list
+    ;; Check MESSAGES is list
     (if (listp messages)
             ;; Required GNU Emacs >= 25.3
             (let (msgs)
