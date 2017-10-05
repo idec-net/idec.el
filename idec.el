@@ -234,7 +234,7 @@ Not used if `idec-smart-fetching' is not nil."
 (defun trim-string (string)
   "Remove white spaces in beginning and ending of STRING;
 White space here is any of: space, tab, Emacs newline (line feed, ASCII 10)."
-(replace-regexp-in-string "\\`[ \t\n]*" "" (replace-regexp-in-string "[ \t\n]*\\'" "" string)))
+  (replace-regexp-in-string "\\`[ \t\n]*" "" (replace-regexp-in-string "[ \t\n]*\\'" "" string)))
 
 (defun get-message-tags (msg)
     "Get MSG tags."
@@ -308,6 +308,20 @@ Return list with body content."
         (delete-region (point) (point-min))
         (buffer-string)))
 
+;; LOCAL MAIL FUNCTIONS
+;; ;;;;;;;;;;;;;;;;;;;;
+
+(defun get-local-echoes ()
+    "Get local downloaded echoes from `idec-mail-dir'."
+    (delete '".." (delete '"." (directory-files idec-mail-dir nil "\\w*\\.\\w*"))))
+
+(defun idec-browse-local-mail ()
+    "Browse local mail from `idec-mail-dir'."
+    (message (s-join " " (get-local-echoes))))
+
+;; END OF LOCAL MAIL FUNCTIONS
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun idec-load-new-messages ()
     "Load new messages from IDEC `idec-primary-node'."
     (interactive)
@@ -361,7 +375,7 @@ Return list with body content."
         (insert-button "Answer"
                        'action (lambda (x) (message "OK")))
         (princ "]")
-        (princ "\t[")
+        (princ "\t   [")
         (insert-button "Answer with quote")
         (princ "]")
         (add-text-properties (point-min) (point-max) 'read-only))
@@ -417,7 +431,6 @@ Return list with body content."
                      (add-to-list 'msg-ids msgid)
                      (message (concat "Download message " msgid " to " echo)))
                  messages)
-        (message (make-messages-url msg-ids))
         (dolist (line (split-string (get-url-content (make-messages-url msg-ids)) "\n"))
             (when (not (string= "" line))
                 (let (msgid content mes)
@@ -512,7 +525,7 @@ with `idec-download-offset' and `idec-download-limit'."
             (when (not (equal line ""))
                 ;; Defind echo
                 (defvar current-echo nil)
-                (setq current-echo (assoc 'content (split-string line ":")))
+                (setq current-echo (nth 0 (split-string line ":")))
                 ;; Create clickable button
                 (insert-text-button current-echo
                                     'action (lambda (x) (load-echo-messages (button-get x 'echo)))
