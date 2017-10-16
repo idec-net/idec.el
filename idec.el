@@ -533,15 +533,22 @@ Return list with body content."
 ;; ECHOES FUNCTIONS
 ;; ;;;;;;;;;;;;;;;;
 
-(defun make-echo-url (echoes)
+(defun make-echo-url (echoes &optional online)
     "Make ECHOES url to retreive messages from `idec-primary-node';
-with `idec-download-offset' and `idec-download-limit'."
+with `idec-download-offset' and `idec-download-limit';
+If ONLINE is t uses `idec-online-download-limit' and `idec-online-download-offset'."
     ;; Check ECHOES is list
-    (if (listp echoes)
-            ;; Required GNU Emacs >= 25.3
-            (message (concat idec-primary-node "u/e/"
-                             (s-join "/" echoes) "/" idec-download-offset ":" idec-download-limit))
-        (message (concat idec-primary-node "u/e/" echoes "/" idec-download-offset ":" idec-download-limit))))
+    (let (limit offset)
+        (if online
+                (and (setq limit idec-online-download-limit)
+                     (setq offset idec-online-download-offset))
+            (and (setq limit idec-download-limit)
+                 (setq offset idec-download-offset)))
+        (if (listp echoes)
+                ;; Required GNU Emacs >= 25.3
+                (message (concat idec-primary-node "u/e/"
+                                 (s-join "/" echoes) "/" offset ":" limit))
+            (message (concat idec-primary-node "u/e/" echoes "/" offset ":" limit)))))
 
 (defun make-messages-url (messages)
     "Make MESSAGES url to retreive messages from `idec-primary-node'."
@@ -560,12 +567,11 @@ with `idec-download-offset' and `idec-download-limit'."
     (nth 1 (split-string
             (get-url-content (make-count-url echo)) ":")))
 
-(defun load-echo-messages (echo)
-    "Load messages from ECHO."
-    (message (concat "DEBUG: " echo))
-    (message (concat "URL: " (make-echo-url echo)))
-    (message (concat "CONTENT: " (get-url-content (make-echo-url echo))))
-    ;; (store-echo-counter echo)
+(defun load-echo-messages (echo &optional online)
+    "Load messages from ECHO with ONLINE selector."
+    (when (not online)
+        (message (concat "Update counter of " echo))
+        (store-echo-counter echo))
     (display-echo-messages (get-url-content (make-echo-url echo))))
 
 (defun proccess-echo-message (msg echo)
@@ -586,7 +592,7 @@ with `idec-download-offset' and `idec-download-limit'."
                 (setq current-echo (nth 0 (split-string line ":")))
                 ;; Create clickable button
                 (insert-text-button current-echo
-                                    'action (lambda (x) (load-echo-messages (button-get x 'echo)))
+                                    'action (lambda (x) (load-echo-messages (button-get x 'echo) t))
                                     'help-echo (concat "Go to echo " current-echo)
                                     'echo current-echo)
                 (princ (format "\t\t||%s\t\t%s\n"

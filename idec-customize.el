@@ -79,6 +79,18 @@ Not used if `idec-smart-fetching' is not nil."
     :type 'string
     :group 'idec)
 
+(defcustom idec-online-download-limit idec-dowload-limit
+    "Download limit on online browsing;
+Default to `idec-download-lmit'"
+    :type 'string
+    :group 'idec)
+
+(defcustom idec-online-download-offset idec-dowload-offset
+    "Download limit on online browsing;
+Default to `idec-download-offset'"
+    :type 'string
+    :group 'idec)
+
 (defgroup idec-accounts nil
     "IDEC accounts settings."
     :group 'idec)
