@@ -26,95 +26,7 @@
 
 ;;; Code:
 
-;; CUSTOMIZATION
-;; ;;;;;;;;;;;;;
-
-(defgroup idec nil
-    "IDEC configuration."
-    :group 'network)
-
-;; Not used
-(defcustom idec-nodes-list
-    '("http://idec.spline-online.tk/"
-      "https://ii-net.tk/ii/ii-point.php?q=/")
-    "List of IDEC nodes."
-    :type 'alist
-    :group 'idec)
-
-(defcustom idec-primary-node nil
-    "Primary node to send messages."
-    :type 'string
-    :group 'idec)
-
-;; Never used at this time.
-(defcustom idec-use-list-txt t
-    "Use /list.txt extension."
-    :group 'idec)
-
-(defcustom idec-smart-fetch t
-    "Enable smat fetching;
-Download only new messages; Not implemented."
-    :type 'boolean
-    :group 'idec)
-
-(defcustom idec-download-limit "50"
-    "Limit of download messages;
-Not used if `idec-smart-fetching' is not nil."
-    :type 'string
-    :group 'idec)
-
-(defcustom idec-download-offset "-50"
-    "Offset of download messages;
-Not used if `idec-smart-fetching' is not nil."
-    :type 'string
-    :group 'idec)
-
-(defcustom idec-echo-subscriptions nil
-    "List of subribes echoes."
-    :type 'string
-    :group 'idec)
-
-(defcustom idec-mail-dir "~/.emacs.d/idec-mail"
-    "Directory to store mail."
-    :type 'string
-    :group 'idec)
-
-(defgroup idec-accounts nil
-    "IDEC accounts settings."
-    :group 'idec)
-
-(defcustom idec-account-nick nil
-    "Account nickname."
-    :type 'string
-    :group 'idec-accounts)
-
-(defcustom idec-account-node nil
-    "Node to send messages."
-    :type 'string
-    :group 'idec-accounts)
-
-(defcustom idec-account-auth nil
-    "Account authstring."
-    :type 'string
-    :group 'idec-accounts)
-
-;; END OF CUSTOMIZATION
-;; ;;;;;;;;;;;;;;;;;;;;
-
-;; VARIABLES
-;; ;;;;;;;;;
-
-(defvar smart-download-limit nil
-    "Used with `idec-smart-fetch'.")
-
-(defvar smart-download-offset nil
-    "Used with `idec-smart-fetch'.")
-
-(defvar new-messages-list nil
-    "New messages for display.")
-
-;; END OF VARIABLES
-;; ;;;;;;;;;;;;;;;;
+(require 'idec-customize)
 
 ;; MODE
 ;; ;;;;
@@ -141,8 +53,7 @@ Not used if `idec-smart-fetching' is not nil."
 
 (defconst idec-font-lock-keywords-2
     (append idec-font-lock-keywords-1 (list
-                                       '("\\<\\(>>?.*\\)\s\\>" . font-lock-comment-face)
-                                       '("\\('\\w*'\\)" . font-lock-variable-name-face)))
+                                       '("\\<\\(>>?.*\\)\s\\>" . font-lock-comment-face)))
     "Quotes highligting for IDEC mode.")
 
 (defvar idec-font-lock-keywords idec-font-lock-keywords-2
@@ -151,6 +62,7 @@ Not used if `idec-smart-fetching' is not nil."
 (defvar idec-mode-syntax-table
     (make-syntax-table text-mode-syntax-table))
 
+;; Mode function
 (defun idec-mode ()
     "Major mode for view and editing IDEC messages."
     (interactive)
@@ -422,6 +334,44 @@ Return list with body content."
                      new-messages-list))
         (idec-mode)))
 
+;; Online reading
+(defun display-echo-messages (messages)
+    "Display downloaded MESSAGES from echo."
+    (message messages)
+    (let (msgs echo)
+        (defvar echo-msg-hash (make-hash-table :test 'equal)
+            "Hashtable with MSG parsing functions.")
+        (setq echo (nth 0 (split-string messages "\n")))
+        (setq msgs (delete (nth 0 (split-string messages "\n")) (split-string messages "\n")))
+        (dolist (id msgs)
+            (puthash id echo echo-msg-hash))
+        (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: online browse " echo "*" ))
+            (switch-to-buffer (concat "*IDEC: online browse " echo "*"))
+            (maphash (lambda (id msg-hash)
+                         (princ "__________________________________\n")
+                         (princ (concat "ID:      " id "\n"))
+                         (princ (concat "From:    " (get-message-field (gethash "content" msg-hash) "author") "("
+                                        (get-message-field (gethash "content" msg-hash) "address") ")" "\n"))
+                         (princ (concat "To:      " (get-message-field (gethash "content" msg-hash) "recipient") "\n"))
+                         (princ (concat "Echo:    " (get-message-field (gethash "content" msg-hash) "echo") "\n"))
+                         (princ (concat "At:      " (get-message-field (gethash "content" msg-hash) "time") "\n"))
+                         (princ (concat "Subject: " (get-message-field (gethash "content" msg-hash) "subj") "\n"))
+                         (princ (concat "__________________________________\n\n"
+                                        (s-join "\n" (get-message-field (gethash "content" msg-hash) "body"))))
+                         (princ "\n__________________________________\n")
+                         (princ "[")
+                         (insert-button "Answer"
+                                        'action (lambda (x) (message "OK")))
+                         (princ "]")
+                         (princ "\t   [")
+                         (insert-button "Answer with quote")
+                         (princ "]\n\n"))
+                     ;; Plain messages hash proccesing
+                     (get-messages-content echo-msg-hash))
+            (add-text-properties (point-min) (point-max) 'read-only)
+            (idec-mode))
+        ))
+
 (defun get-messages-content (messages)
     "Get MESSAGES content from `idec-primary-node'."
     (defvar msg-ids '())
@@ -488,7 +438,7 @@ with `idec-download-offset' and `idec-download-limit'."
                 (concat idec-primary-node "u/m/" msgs
                     ;; (s-join "/" messages)
                     ))
-        (message (concat idec-primary-node "u/m/" messages))))
+        (concat idec-primary-node "u/m/" messages)))
 
 (defun make-count-url (echo)
     "Return messages count url in `idec-primary-node' from ECHO."
@@ -499,14 +449,9 @@ with `idec-download-offset' and `idec-download-limit'."
     (nth 1 (split-string
             (get-url-content (make-count-url echo)) ":")))
 
-(defun display-echo-messages (messages)
-    "Display downloaded MESSAGES from echo."
-    (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: browse echo*"))
-        (switch-to-buffer "*IDEC: browse echo*")
-        (princ messages)))
-
 (defun load-echo-messages (echo)
     "Load messages from ECHO."
+    (message (concat "DEBUG: " echo))
     (store-echo-counter echo)
     (display-echo-messages (get-url-content (make-echo-url echo))))
 
