@@ -114,6 +114,11 @@
     (interactive)
     (idec-fetch-echo-list (concat idec-primary-node "list.txt")))
 
+(defun idec-online-browse-hidden ()
+    "Browse hidden echo."
+    (interactive)
+    (load-echo-messages (read-string "Enter echo name: ") t))
+
 (provide 'idec-online)
 
 ;;; idec-online.el ends here

@@ -97,17 +97,17 @@ Default to `idec-download-offset'"
     "IDEC accounts settings."
     :group 'idec)
 
-(defcustom idec-account-nick nil
+(defcustom idec-account-nick ""
     "Account nickname."
     :type 'string
     :group 'idec-accounts)
 
-(defcustom idec-account-node nil
+(defcustom idec-account-node ""
     "Node to send messages."
     :type 'string
     :group 'idec-accounts)
 
-(defcustom idec-account-auth nil
+(defcustom idec-account-auth ""
     "Account authstring."
     :type 'string
     :group 'idec-accounts)

@@ -1,4 +1,4 @@
-;;; idec-customize.el --- GNU Emacs client for IDEC network
+;;; idec-customize.el --- This file part of GNU Emacs client for IDEC network
 
 ;; Copyright (c) 2017 Denis Zheleztsov
 
