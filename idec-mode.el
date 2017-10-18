@@ -58,7 +58,10 @@
     "Default highlighting expressions for IDEC mode.")
 
 (defvar idec-mode-syntax-table
-    (make-syntax-table text-mode-syntax-table))
+    (let ((st (make-syntax-table)))
+        (modify-syntax-entry ?_ "w" st)
+        (modify-syntax-entry ?/ ". 2b" st)
+        st))
 
 ;; Mode function
 (defun idec-mode ()
@@ -66,7 +69,7 @@
     (interactive)
     (kill-all-local-variables)
     ;; Mode definition
-    ;; (set-syntax-table idec-mode-syntax-table)
+    (set-syntax-table idec-mode-syntax-table)
     (use-local-map idec-mode-map)
     ;; (font-lock-add-keywords 'idec-mode '(idec-font-lock-keywords))
     ;; (set (make-local-variable 'font-lock-defaults) '(idec-font-lock-keywords))

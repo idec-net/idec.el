@@ -30,6 +30,7 @@
 ;; (require 'idec-answers)
 (require 'idec-parser)
 (require 'idec-online)
+(require 'idec-db)
 
 (defgroup idec nil
     "IDEC configuration."
@@ -159,45 +160,6 @@ Default to `idec-download-offset'"
 ;; FUNCTIONS
 ;; ;;;;;;;;;
 
-(defun create-echo-mail-dir (echo)
-    "Create ECHO directory inside `idec-mail-dir'."
-    (if (file-exists-p idec-mail-dir)
-            (message idec-mail-dir)
-        (mkdir idec-mail-dir))
-    (if (file-exists-p (concat idec-mail-dir "/" echo))
-            (message (concat idec-mail-dir "/" echo))
-        (mkdir (concat idec-mail-dir "/" echo))))
-
-(defun get-echo-dir (echo)
-    "Get ECHO dir from `idec-mail-dir'."
-    (concat idec-mail-dir (concat "/" echo)))
-
-(defun filename-to-store (content id)
-    "Make filename from CONTENT unixtime and ID."
-    (concat (nth 2 (split-string content)) "-" id))
-
-(defun get-message-file (echo id)
-    "Get ECHO message filename by ID."
-    (concat (get-echo-dir echo) "/" id))
-
-(defun get-counter-file (echo)
-    "Get ECHO counter filename."
-    (concat (get-echo-dir echo) "/counter"))
-
-(defun store-message (content echo id)
-    "Store CONTENT from ECHO message in `idec-mail-dir' with it ID."
-    (create-echo-mail-dir echo)
-    (write-region content nil (get-message-file echo id)))
-
-(defun store-echo-counter (echo)
-    "Store count messages in ECHO."
-    (create-echo-mail-dir echo)
-    (write-region (echo-messages-count echo) nil (get-counter-file echo)))
-
-(defun check-message-in-echo (msg echo)
-    "Check if exists message MSG in ECHO `idec-mail-dir'."
-    (not (f-file? (get-message-file echo msg))))
-
 
 (defun get-url-content (url)
     "Get URL content and return it without headers."
@@ -268,11 +230,16 @@ Default to `idec-download-offset'"
                        (s-join "\n" (get-message-field (gethash "msg" msg) "body"))))
         (princ "\n__________________________________\n")
         (princ "[")
-        (insert-button "Answer"
-                       'action (lambda (x) (message "OK")))
+        (let (answer-hash)
+            (setq answer-hash (make-hash-table :test 'equal))
+            (puthash "content" (gethash "msg" msg) answer-hash)
+            (insert-button "Answer"
+                           'action (lambda (x) (edit-answer-without-quote (button-get x 'id) (button-get x 'msg-hash)))
+                           'id (gethash "id" msg)
+                           'msg-hash answer-hash))
         (princ "]")
         (princ "\t   [")
-        (insert-button "Answer with quote")
+        (insert-button "Quote answer")
         (princ "]")
         (add-text-properties (point-min) (point-max) 'read-only))
     (point-max)
@@ -401,6 +368,11 @@ If ONLINE is t uses `idec-online-download-limit' and `idec-online-download-offse
 
 ;; END OF ECHOES FUNCTIONS
 ;; ;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun idec-new-message ()
+    "Make new message."
+    (interactive)
+    (edit-new-message (read-string "Echo: ")))
 
 ;; END OF FUNCTIONS
 ;; ;;;;;;;;;;;;;;;;
