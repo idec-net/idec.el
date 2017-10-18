@@ -153,12 +153,8 @@ Default to `idec-download-offset'"
 ;; END OF NAVIGATION FUNCTIONS
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; END OF MODE
-;; ;;;;;;;;;;;
-
 ;; FUNCTIONS
 ;; ;;;;;;;;;
-
 
 (defun get-url-content (url)
     "Get URL content and return it without headers."

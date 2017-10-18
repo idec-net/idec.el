@@ -79,13 +79,21 @@
                             ([(id :primary-key)
                               tags
                               author
-                              to
+                              recipient
+                              repto
                               echo
                               subj
-                              (time :timestamp)
                               (body :text)
-                              (unread integer :default 1)])
-                            ])
+                              (time :timestamp)
+                              (unread integer :default 1)])])
+    (emacsql (open-echo-db echo)
+             [:create-table outbox
+                            ([
+                              (time :timestamp)
+                              recipient
+                              subj
+                              (body :text)
+                              ])])
     t)
 
 (defun init-echo-db (echo)
@@ -98,20 +106,41 @@
 (defun insert-message-to-db (msg id &optional mark-read)
     "Insert MSG ID to echo db;
 unread by default, but you can MARK-READ it."
-    (if (not (emacsql (open-echo-db (get-message-field msg "echo"))
-             [:insert :into messages
-                      :values ([$s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9])]
-             id
-             (get-message-field msg "tags")
-             (get-message-field msg "author")
-             (get-message-field msg "recipient")
-             (get-message-field msg "echo")
-             (get-message-field msg "subj")
-             (get-message-field msg "time")
-             (s-join "\n" (get-message-field msg "body"))
-             mark-read))
-            (message (concat "IDEC: Message " id " stored in db"))
-        (message (concat "IDEC: Problem to store message " id))))
+    (when (check-message-in-db id (get-message-field msg "echo"))
+        (when (not mark-read)
+            (setq mark-read 1))
+        (let (repto)
+            (setq repto "")
+            ;; Check repto tag
+            (if (string-match "repto" (get-message-field msg "tags"))
+                    (setq repto (nth 3 (split-string (get-message-field msg "tags") "/"))))
+
+            (if (not (emacsql (open-echo-db (get-message-field msg "echo"))
+                          [:insert :into messages
+                                   :values ([$s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10])]
+                          id
+                          (get-message-field msg "tags")
+                          (get-message-field msg "author")
+                          (get-message-field msg "recipient")
+                          repto
+                          (get-message-field msg "echo")
+                          (get-message-field msg "subj")
+                          (get-message-field msg "time")
+                          (s-join "\n" (get-message-field msg "body"))
+                          mark-read))
+                    (message (concat "IDEC: Message " id " stored in db"))
+                (message (concat "IDEC: Problem to store message " id))))
+        ))
+
+(defun get-message-from-db (msgid echo)
+    "Retrieve message by MSGID from ECHO database."
+    )
+
+(defun delete-message-from-db (msgid echo)
+    "Delete message by MSGID from ECHO database."
+    (when (not
+         (emacsql (open-echo-db echo) [:delete :from messages :where (= id $s1)] msgid))
+        (message (concat "IDEC: Message " msgid " deleted"))))
 
 (defun check-message-in-db (msgid echo)
     "Check message MSGID in ECHO database."
