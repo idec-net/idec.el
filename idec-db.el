@@ -26,6 +26,7 @@
 
 ;;; Code:
 (require 'emacsql)
+(require 'emacsql-sqlite)
 (require 'idec-parser)
 
 (defun create-echo-mail-dir (echo)
@@ -68,7 +69,59 @@
     (not (f-file? (get-message-file echo msg))))
 
 (defun open-echo-db (echo)
-    "Create or open sqlite database inside ECHO `idec-mail-dir'.")
+    "Create or open sqlite database inside ECHO `idec-mail-dir'."
+    (emacsql-sqlite (concat (get-echo-dir echo) "/db.sqlite3")))
+
+(defun create-db-schema (echo)
+    "Create db schema for ECHO."
+    (emacsql (open-echo-db echo)
+             [:create-table messages
+                            ([(id :primary-key)
+                              tags
+                              author
+                              to
+                              echo
+                              subj
+                              (time :timestamp)
+                              (body :text)
+                              (unread integer :default 1)])
+                            ])
+    t)
+
+(defun init-echo-db (echo)
+    "Initialize new database for ECHO."
+    (when (check-message-in-echo "db.sqlite3" echo)
+        (and
+         (create-db-schema echo)
+         (message (concat "IDEC: Database for " echo " initialized.")))))
+
+(defun insert-message-to-db (msg id &optional mark-read)
+    "Insert MSG ID to echo db;
+unread by default, but you can MARK-READ it."
+    (if (not (emacsql (open-echo-db (get-message-field msg "echo"))
+             [:insert :into messages
+                      :values ([$s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9])]
+             id
+             (get-message-field msg "tags")
+             (get-message-field msg "author")
+             (get-message-field msg "recipient")
+             (get-message-field msg "echo")
+             (get-message-field msg "subj")
+             (get-message-field msg "time")
+             (s-join "\n" (get-message-field msg "body"))
+             mark-read))
+            (message (concat "IDEC: Message " id " stored in db"))
+        (message (concat "IDEC: Problem to store message " id))))
+
+(defun check-message-in-db (msgid echo)
+    "Check message MSGID in ECHO database."
+    (if (not (emacsql (open-echo-db echo)
+             [:select [id]
+                      :from messages
+                      :where (= id $s1)]
+             msgid))
+            t
+        nil))
 
 (provide 'idec-db)
 
