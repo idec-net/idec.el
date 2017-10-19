@@ -38,6 +38,10 @@
             (message (concat idec-mail-dir "/" echo))
         (mkdir (concat idec-mail-dir "/" echo))))
 
+(defun get-local-echoes ()
+    "Get local downloaded echoes from `idec-mail-dir'."
+    (delete '".." (delete '"." (directory-files idec-mail-dir nil "\\w*\\.\\w*"))))
+
 (defun get-echo-dir (echo)
     "Get ECHO dir from `idec-mail-dir'."
     (concat idec-mail-dir (concat "/" echo)))
@@ -132,6 +136,25 @@ unread by default, but you can MARK-READ it."
                 (message (concat "IDEC: Problem to store message " id))))
         ))
 
+(defun total-db-messages (echo)
+    "Return count of local ECHO messages."
+    (length (emacsql (open-echo-db echo)
+                     [:select [id]
+                      :from messages])))
+
+(defun get-echo-unread-messages (echo)
+    "Get count of unread messages from ECHO database."
+    (car (car (emacsql (open-echo-db echo)
+             [:select (funcall count id)
+              :from messages
+              :where (= unread 1)]))))
+
+(defun get-echo-messages-count (echo)
+    "Get count of all messages in ECHO."
+    (car (car (emacsql (open-echo-db echo)
+             [:select (funcall count id)
+              :from messages]))))
+
 (defun get-message-from-db (msgid echo)
     "Retrieve message by MSGID from ECHO database."
     )
@@ -144,13 +167,30 @@ unread by default, but you can MARK-READ it."
 
 (defun check-message-in-db (msgid echo)
     "Check message MSGID in ECHO database."
+    (init-echo-db echo)
     (if (not (emacsql (open-echo-db echo)
              [:select [id]
-                      :from messages
-                      :where (= id $s1)]
+              :from messages
+              :where (= id $s1)]
              msgid))
             t
         nil))
+
+(defun mark-message-read (msgid echo)
+    "Mark message MSGID as read in ECHO database."
+    (emacsql (open-echo-db echo)
+             [:update messages
+              :set (= unread 0)
+              :where (= id $s1)]
+             msgid))
+
+(defun mark-all-messages-as-read (echo)
+    "Mark all messages in ECHO as read."
+    (message (concat "IDEC: RECEIVE ECHO: " echo))
+    (if (not (string= "" echo))
+            (emacsql (open-echo-db echo)
+                     [:update messages :set (= unread 0)])
+        (message "IDEC: empty echo receive in `mark-all-messages-as-read'")))
 
 (provide 'idec-db)
 

@@ -85,6 +85,16 @@ Return list with body content."
              msg-list)
     field-max)
 
+(defun get-longest-string (lst)
+    "Get length of longest string from LST."
+    (let (max)
+        (setq max 0)
+        (dolist (str lst)
+            (message (number-to-string max))
+            (if (> (length str) max)
+                (setq max (length str))))
+        max))
+
 (defun get-message-field (msg field)
     "Get message MSG FIELD."
     (defvar fields-hash (make-hash-table :test 'equal)
