@@ -1,4 +1,4 @@
 * TODO idec-mode
 * TODO Formating with highlighting header
-* TODO Read local mail instead of downloading into RAM
+* DONE Read local mail instead of downloading into RAM
 * TODO Use smart-fetching
