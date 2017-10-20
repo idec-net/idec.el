@@ -64,11 +64,11 @@
                          (princ "]")
                          (princ "\t   [")
                          (insert-button "Answer with quote")
-                         (princ "]\n\n")))
+                         (princ "]\n\n"))
+                         (add-text-properties (point-min) (point) 'read-only))
                      ;; Plain messages hash proccesing
                      (get-messages-content echo-msg-hash))
-            (idec-mode)))
-    (add-text-properties (point-min) (point-max) 'read-only))
+            (idec-mode))))
 
 
 (defun load-echo-messages (echo &optional online)

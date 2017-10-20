@@ -36,12 +36,19 @@
 (defvar idec-mode-hook nil)
 
 (defvar idec-mode-map
-    (let ((map (make-keymap)))
-        (define-key map "\C-c \C-c" 'kill-this-buffer)
-        (define-key map "\C-c \C-n" 'idec-next-message)
-        (define-key map "\C-c \C-b" 'idec-previous-message)
+    (let ((map (make-sparse-keymap)))
+        (define-key map ["C-c C-c"] 'kill-this-buffer)
+        (define-key map ["C-c C-n"] 'idec-next-message)
+        (define-key map ["C-c C-b"] 'idec-previous-message)
+        (define-key map ["C-c C-e"] 'idec-new-message)
         map)
     "Keymapping for IDEC mode.")
+
+(defvar idec-mode-syntax-table
+    (let ((st (make-syntax-table)))
+        (modify-syntax-entry ?# "<" st)
+        (modify-syntax-entry ?\n ">" st)
+        st))
 
 (defconst idec-font-lock-keywords-1
     (list
@@ -54,29 +61,37 @@
                                        '("\\<\\(>>?.*\\)\s\\>" . font-lock-comment-face)))
     "Quotes highligting for IDEC mode.")
 
-(defvar idec-font-lock-keywords idec-font-lock-keywords-2
+(defvar idec-font-lock-keywords
+    '(("function \\(\\sw+\\)" (1 font-lock-function-name-face)))
     "Default highlighting expressions for IDEC mode.")
 
-(defvar idec-mode-syntax-table
-    (let ((st (make-syntax-table)))
-        (modify-syntax-entry ?_ "w" st)
-        (modify-syntax-entry ?/ ". 2b" st)
-        st))
-
 ;; Mode function
-(defun idec-mode ()
+(define-derived-mode idec-mode org-mode "IDEC"
     "Major mode for view and editing IDEC messages."
-    (interactive)
-    (kill-all-local-variables)
-    ;; Mode definition
-    (set-syntax-table idec-mode-syntax-table)
+    :syntax-table idec-mode-syntax-table
+    (setq-local comment-start "// ")
+    (setq-local comment-start-skip "//+\\s-*")
+    (setq-local font-lock-defaults
+                '(idec-font-lock-keywords))
     (use-local-map idec-mode-map)
-    ;; (font-lock-add-keywords 'idec-mode '(idec-font-lock-keywords))
-    ;; (set (make-local-variable 'font-lock-defaults) '(idec-font-lock-keywords))
-    (setq major-mode 'idec-mode)
-    (setq mode-name "[IDEC]")
+    (setq-local indent-line-function 'org-indent-line)
     (setq imenu-generic-expression "*IDEC")
+    (setq mode-name "[IDEC]")
     (run-hooks 'idec-mode-hook))
+
+;; (defun idec-mode ()
+;;     "Major mode for view and editing IDEC messages."
+;;     (interactive)
+;;     (kill-all-local-variables)
+;;     ;; Mode definition
+;;     (set-syntax-table idec-mode-syntax-table)
+;;     (use-local-map idec-mode-map)
+;;     ;; (font-lock-add-keywords 'idec-mode '(idec-font-lock-keywords))
+;;     ;; (set (make-local-variable 'font-lock-defaults) '(idec-font-lock-keywords))
+;;     (setq major-mode 'idec-mode)
+;;     (setq mode-name "[IDEC]")
+;;     (setq imenu-generic-expression "*IDEC")
+;;     (run-hooks 'idec-mode-hook))
 
 (provide 'idec-mode)
 

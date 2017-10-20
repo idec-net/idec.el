@@ -177,10 +177,11 @@ Default to `idec-download-offset'"
         3)
      ? ))
 
-(defun mark-all-as-read (echo)
-    "Mark all messages in ECHO as read."
+(defun mark-all-as-read (echo &optional checkpoint)
+    "Mark all messages in ECHO as read;
+put cursor to CHECKPOINT."
     (mark-all-messages-as-read echo)
-    (idec-local-browse))
+    (idec-local-browse checkpoint))
 
 (defun idec-mark-all-as-read (&optional echo)
     "Mark all messages in ECHO as read."
@@ -189,8 +190,9 @@ Default to `idec-download-offset'"
             (mark-all-messages-as-read (read-string "Enter echo name: "))
         (mark-all-messages-as-read echo)))
 
-(defun idec-local-browse ()
-    "Browse local mail from `idec-mail-dir'."
+(defun idec-local-browse (&optional checkpoint)
+    "Browse local mail from `idec-mail-dir';
+optionaly return cursor to CHECKPOINT."
     (interactive)
     (get-buffer-create "*IDEC: INBOX*")
     (with-output-to-temp-buffer (get-buffer-create "*IDEC: INBOX*")
@@ -220,6 +222,7 @@ Default to `idec-download-offset'"
                             (setq unread (get-echo-unread-messages echo))
                             (when (> unread 0)
                                 (princ "*"))
+                            (princ " ")
 
                             ;; [New message] button
                             (princ "\t[")
@@ -229,12 +232,15 @@ Default to `idec-download-offset'"
                             (princ "]\t[")
                             ;; [Mark read] button
                             (insert-button "Mark read"
-                                           'action (lambda (x) (mark-all-as-read (button-get x 'echo)))
-                                           'echo echo)
+                                           'action (lambda (x) (mark-all-as-read (button-get x 'echo) (button-get x 'point)))
+                                           'echo echo
+                                           'point (point))
                             (princ "]\n"))
                     (message (concat "IDEC: FUUUUUU <" echo ">")))
                 ))
         (add-text-properties (point-min) (point-max) 'read-only))
+    (if checkpoint
+            (goto-char checkpoint))
     (idec-mode))
 
 (defun browse-local-echo (&optional echo)
@@ -242,7 +248,7 @@ Default to `idec-download-offset'"
     (interactive)
     (if (not echo)
             (setq echo (read-string "Enter echo name: ")))
-    (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: INBOX->(" ) )))
+    (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: INBOX->(" echo ")") )))
 
 ;; END OF LOCAL MAIL FUNCTIONS
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -258,7 +264,7 @@ Default to `idec-download-offset'"
             (if (string-match "\\." line)
                     (and (setq current-echo line)
                          (store-echo-counter line))
-                (when (and (check-message-in-echo line current-echo)
+                (when (and ;; (check-message-in-echo line current-echo)
                            (> (length line) 1)
                            (check-message-in-db line current-echo))
                     (when (not (string= "" line))
@@ -307,7 +313,8 @@ Default to `idec-download-offset'"
         (princ "]")
         (add-text-properties (point-min) (point-max) 'read-only))
     (point-max)
-    (idec-mode))
+    (idec-mode)
+    (visual-line-mode))
 
 (defun display-new-messages ()
     "Display new fetched messages from `new-messages-list'."
@@ -382,7 +389,7 @@ Default to `idec-download-offset'"
             nil
         (maphash (lambda (id msg)
                      (insert-message-to-db (gethash "content" msg) id)
-                     (store-message (gethash "content" msg) (gethash "echo" msg) id)
+                     ;; (store-message (gethash "content" msg) (gethash "echo" msg) id)
                      (puthash id (gethash "content" msg) new-messages-list))
                  (get-messages-content ids))))
 
