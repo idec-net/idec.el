@@ -198,7 +198,7 @@
                             'action (lambda (x) (send-reply-message (button-get x 'msg)))
                             'msg answer-hash)
         (goto-char p)
-    (idec-mode)))
+    (org-idec)))
 
 ;; END OF ANSWERS
 
@@ -225,7 +225,7 @@
                             'action (lambda (x) (send-new-message (button-get x 'msg-echo)))
                             'msg-echo echo)
         (goto-char p))
-    (idec-mode))
+    (org-idec))
 
 (provide 'idec-answers)
 

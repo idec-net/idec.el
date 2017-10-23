@@ -142,6 +142,38 @@ unread by default, but you can MARK-READ it."
                      [:select [id]
                       :from messages])))
 
+(defun make-hash-from-msg-list (msg-list)
+    "Return hash table maded from MSG-LIST."
+    (let (msg-hash)
+        (if (and
+             (listp msg-list)
+             (> (length msg-list) 0))
+                (let ()
+                    (setq msg-hash (make-hash-table :test 'equal))
+                    (puthash "id" (nth 0 l) msg-hash)
+                    (puthash "tags" (nth 1 l) msg-hash)
+                    (puthash "author" (nth 2 l) msg-hash)
+                    (puthash "recipient" (nth 3 l) msg-hash)
+                    (puthash "repto" (nth 4 l) msg-hash)
+                    (puthash "echo" (nth 5 l) msg-hash)
+                    (puthash "subj" (nth 6 l) msg-hash)
+                    (puthash "body" (nth 7 l) msg-hash)
+                    (puthash "time" (nth 8 l) msg-hash)
+                    (puthash "unread" (nth 9 l) msg-hash)))
+        msg-hash))
+
+(defun get-echo-messages (echo)
+    "Get ECHO messages ordered by time."
+    (let (msgs)
+        (setq msgs (make-list 0 (make-hash-table :test 'equal)))
+        (dolist (l (emacsql (open-echo-db echo)
+                           [:select [id tags author recipient repto echo subj body time unread]
+                                    :from messages
+                                    :order-by time]))
+            (if (> (length l) 0)
+                    (setq msgs (append msgs (make-list 1 (make-hash-from-msg-list l))))))
+        msgs))
+
 (defun get-echo-unread-messages (echo)
     "Get count of unread messages from ECHO database."
     (car (car (emacsql (open-echo-db echo)

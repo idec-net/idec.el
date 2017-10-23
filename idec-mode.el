@@ -61,16 +61,25 @@
                                        '("\\<\\(>>?.*\\)\s\\>" . font-lock-comment-face)))
     "Quotes highligting for IDEC mode.")
 
-(defvar idec-font-lock-keywords
-    '(("function \\(\\sw+\\)" (1 font-lock-function-name-face)))
+(defvar idec-font-lock-keywords idec-font-lock-keywords-1
+    ;; '(("ID" (1 font-lock-function-name-face)))
     "Default highlighting expressions for IDEC mode.")
 
 ;; Mode function
-(define-derived-mode idec-mode org-mode "IDEC"
+(define-generic-mode
+        'idec
+    '("//" ">" "ЗЫ" "# ")
+    '("ii://" "ID" "$subj" "сабж" "субж"
+      "Subject" "From" "To" "Echo" "At")
+    '(("=" . 'font-lock-operator)
+      (";" . 'font-lock-builtin))
+    '("\\.idec$")
+    nil)
+
+(define-derived-mode org-idec text-mode "IDEC"
     "Major mode for view and editing IDEC messages."
     :syntax-table idec-mode-syntax-table
-    (setq-local comment-start "// ")
-    (setq-local comment-start-skip "//+\\s-*")
+    (setq-local comment-start "/{2} ")
     (setq-local font-lock-defaults
                 '(idec-font-lock-keywords))
     (use-local-map idec-mode-map)
@@ -79,19 +88,19 @@
     (setq mode-name "[IDEC]")
     (run-hooks 'idec-mode-hook))
 
-;; (defun idec-mode ()
-;;     "Major mode for view and editing IDEC messages."
-;;     (interactive)
-;;     (kill-all-local-variables)
-;;     ;; Mode definition
-;;     (set-syntax-table idec-mode-syntax-table)
-;;     (use-local-map idec-mode-map)
-;;     ;; (font-lock-add-keywords 'idec-mode '(idec-font-lock-keywords))
-;;     ;; (set (make-local-variable 'font-lock-defaults) '(idec-font-lock-keywords))
-;;     (setq major-mode 'idec-mode)
-;;     (setq mode-name "[IDEC]")
-;;     (setq imenu-generic-expression "*IDEC")
-;;     (run-hooks 'idec-mode-hook))
+(defun idec-mode ()
+    "Major mode for view and editing IDEC messages."
+    (interactive)
+    (kill-all-local-variables)
+    ;; Mode definition
+    (set-syntax-table idec-mode-syntax-table)
+    (use-local-map idec-mode-map)
+    ;; (font-lock-add-keywords 'idec-mode '(idec-font-lock-keywords))
+    ;; (set (make-local-variable 'font-lock-defaults) '(idec-font-lock-keywords))
+    (setq major-mode 'idec-mode)
+    (setq mode-name "[IDEC]")
+    (setq imenu-generic-expression "*IDEC")
+    (run-hooks 'idec-mode-hook))
 
 (provide 'idec-mode)
 

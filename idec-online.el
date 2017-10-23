@@ -52,7 +52,9 @@
                          (princ (concat "To:      " (get-message-field (gethash "content" msg-hash) "recipient") "\n"))
                          (princ (concat "Echo:    " (get-message-field (gethash "content" msg-hash) "echo") "\n"))
                          (princ (concat "At:      " (get-message-field (gethash "content" msg-hash) "time") "\n"))
-                         (princ (concat "Subject: " (get-message-field (gethash "content" msg-hash) "subj") "\n"))
+                         (let (subj)
+                             (setq subj (concat "Subject: " (get-message-field (gethash "content" msg-hash) "subj")))
+                             (princ (concat subj "\n")))
                          (princ (concat "__________________________________\n\n"
                                         (s-join "\n" (get-message-field (gethash "content" msg-hash) "body"))))
                          (princ "\n__________________________________\n")
@@ -64,11 +66,11 @@
                          (princ "]")
                          (princ "\t   [")
                          (insert-button "Answer with quote")
-                         (princ "]\n\n"))
-                         (add-text-properties (point-min) (point) 'read-only))
+                         (princ "]\n\n")))
                      ;; Plain messages hash proccesing
                      (get-messages-content echo-msg-hash))
-            (idec-mode))))
+            ;; (idec-mode)
+            (idec))))
 
 
 (defun load-echo-messages (echo &optional online)
@@ -89,20 +91,38 @@
     "Parse RAW-LIST from HTTP response."
     (with-output-to-temp-buffer (get-buffer-create "*IDEC: list.txt*")
         (switch-to-buffer "*IDEC: list.txt*")
-        (dolist (line (split-string (decode-coding-string raw-list 'utf-8) "\n"))
-            (when (not (equal line ""))
-                ;; Defind echo
-                (defvar current-echo nil)
-                (setq current-echo (nth 0 (split-string line ":")))
-                ;; Create clickable button
-                (insert-text-button current-echo
-                                    'action (lambda (x) (load-echo-messages (button-get x 'echo) t))
-                                    'help-echo (concat "Go to echo " current-echo)
-                                    'echo current-echo)
-                (princ (format "\t\t||%s\t\t%s\n"
-                               (nth 2 (split-string line ":"))
-                               (nth 1 (split-string line ":")))))
-            ))
+        (let (len lst)
+            ;; Calculate echo name
+            (setq lst (list))
+            (dolist (l (split-string (decode-coding-string raw-list 'utf-8) "\n"))
+                (add-to-list 'lst (nth 0 (split-string l ":")) t))
+            (setq len (get-longest-string lst))
+            (message (concat "Longest echo " (number-to-string len)))
+            (dolist (line (split-string (decode-coding-string raw-list 'utf-8) "\n"))
+                (when (not (equal line ""))
+                    ;; Define echo
+                    (defvar current-echo nil)
+                    (setq current-echo (nth 0 (split-string line ":")))
+                    ;; Create clickable button
+                    (insert-text-button current-echo
+                                        'action (lambda (x) (load-echo-messages (button-get x 'echo) t))
+                                        'help-echo (concat "Go to echo " current-echo)
+                                        'echo current-echo)
+                    (save-excursion
+                        (let (s e)
+                            (setq e (point))
+                            (beginning-of-line)
+                            (setq s (point))
+                            (add-text-properties s e '(comment t face '(:foreground "light green")))))
+                    (princ (make-string (+ 3 (- len (length current-echo))) ? ))
+                    (princ (format "%s\n"
+                                   (nth 2 (split-string line ":"))))
+                    (save-excursion
+                        (let (s e)
+                            (setq e (point))
+                            (re-search-backward "  ")
+                            (setq s (point))
+                            (add-text-properties s e '(comment t face '(:foreground "light blue")))))))))
     (idec-mode))
 
 (defun idec-fetch-echo-list (nodeurl)

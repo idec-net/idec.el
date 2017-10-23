@@ -212,7 +212,7 @@ optionaly return cursor to CHECKPOINT."
                             (setq start (point))
                             (end-of-line)
                             (setq end (point))
-                            (add-text-properties start end '(comment t face '(:foreground "green")))
+                            (add-text-properties start end '(comment t face '(:foreground "light green")))
 
                             (princ (concat (dots echo)
                                            "("
@@ -248,7 +248,9 @@ optionaly return cursor to CHECKPOINT."
     (interactive)
     (if (not echo)
             (setq echo (read-string "Enter echo name: ")))
-    (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: INBOX->(" echo ")") )))
+    (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: INBOX->(" echo ")") )
+        (princ (number-to-string (length (get-echo-messages echo))))
+        (idec-mode)))
 
 ;; END OF LOCAL MAIL FUNCTIONS
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -313,8 +315,7 @@ optionaly return cursor to CHECKPOINT."
         (princ "]")
         (add-text-properties (point-min) (point-max) 'read-only))
     (point-max)
-    (idec-mode)
-    (visual-line-mode))
+    (idec-mode))
 
 (defun display-new-messages ()
     "Display new fetched messages from `new-messages-list'."
