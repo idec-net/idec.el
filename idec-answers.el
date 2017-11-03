@@ -26,7 +26,7 @@
 
 ;;; Code:
 
-(require 'idec-mode)
+(require 'idec)
 (require 'web)
 
 (defun replace-in-string (what with str)

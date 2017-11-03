@@ -26,6 +26,110 @@
 
 ;;; Code:
 
+(require 'idec)
+(require 'idec-online)
+
+(defgroup idec nil
+    "IDEC configuration."
+    :group 'network)
+
+;; Not used
+(defcustom idec-nodes-list
+    "http://idec.spline-online.tk/,https://ii-net.tk/ii/ii-point.php?q=/"
+    "List(comma separated) of IDEC nodes."
+    :type 'string
+    :group 'idec)
+
+(defcustom idec-primary-node nil
+    "Primary node to send messages."
+    :type 'string
+    :group 'idec)
+
+;; Never used at this time.
+(defcustom idec-use-list-txt t
+    "Use /list.txt extension."
+    :group 'idec)
+
+(defcustom idec-smart-fetch t
+    "Enable smat fetching;
+Download only new messages; Not implemented."
+    :type 'boolean
+    :group 'idec)
+
+(defcustom idec-download-limit "50"
+    "Limit of download messages;
+Not used if `idec-smart-fetching' is not nil."
+    :type 'string
+    :group 'idec)
+
+(defcustom idec-download-offset "-50"
+    "Offset of download messages;
+Not used if `idec-smart-fetching' is not nil."
+    :type 'string
+    :group 'idec)
+
+(defcustom idec-echo-subscriptions nil
+    "List of subribes echoes."
+    :type 'string
+    :group 'idec)
+
+(defcustom idec-mail-dir "~/.emacs.d/idec-mail"
+    "Directory to store mail."
+    :type 'string
+    :group 'idec)
+
+(defcustom idec-online-download-limit "0"
+    "Download limit on online browsing;
+Default to `idec-download-lmit'"
+    :type 'string
+    :group 'idec)
+
+(defcustom idec-online-download-offset "0"
+    "Download limit on online browsing;
+Default to `idec-download-offset'"
+    :type 'string
+    :group 'idec)
+
+(defgroup idec-accounts nil
+    "IDEC accounts settings."
+    :group 'idec)
+
+(defcustom idec-account-nick ""
+    "Account nickname."
+    :type 'string
+    :group 'idec-accounts)
+
+(defcustom idec-account-node ""
+    "Node to send messages."
+    :type 'string
+    :group 'idec-accounts)
+
+(defcustom idec-account-auth ""
+    "Account authstring."
+    :type 'string
+    :group 'idec-accounts)
+
+;; END OF CUSTOMIZATION
+;; ;;;;;;;;;;;;;;;;;;;;
+
+;; VARIABLES
+;; ;;;;;;;;;
+
+(defvar smart-download-limit nil
+    "Used with `idec-smart-fetch'.")
+
+(defvar smart-download-offset nil
+    "Used with `idec-smart-fetch'.")
+
+(defvar new-messages-list nil
+    "New messages for display.")
+
+(setq idec-online-download-limit idec-download-limit)
+(setq idec-online-download-offset idec-download-offset)
+
+;; END OF VARIABLES
+;; ;;;;;;;;;;;;;;;;
+
 ;; MODE
 ;; ;;;;
 
@@ -102,6 +206,145 @@
     (setq imenu-generic-expression "*IDEC")
     (run-hooks 'idec-mode-hook))
 
-(provide 'idec-mode)
+(defun idec-mark-all-as-read (&optional echo)
+    "Mark all messages in ECHO as read."
+    (interactive)
+    (if (not echo)
+            (mark-all-messages-as-read (read-string "Enter echo name: "))
+        (mark-all-messages-as-read echo)))
+
+(defun idec-local-browse (&optional checkpoint)
+    "Browse local mail from `idec-mail-dir';
+optionaly return cursor to CHECKPOINT."
+    (interactive)
+    (get-buffer-create "*IDEC: INBOX*")
+    (with-output-to-temp-buffer (get-buffer-create "*IDEC: INBOX*")
+        (switch-to-buffer "*IDEC: INBOX*")
+        (save-excursion
+            (dolist (echo (get-local-echoes))
+                (if echo
+                        (let (unread start end)
+                            ;; Echo name with unread messages
+                            ;; ii.test.14 (5)*
+                            (insert-button echo
+                                           'action (lambda (x) (browse-local-echo (button-get x 'echo)))
+                                           'echo echo
+                                           '(face nil))
+
+                            (beginning-of-line)
+                            (setq start (point))
+                            (end-of-line)
+                            (setq end (point))
+                            (add-text-properties start end '(comment t face '(:foreground "light green")))
+
+                            (princ (concat (dots echo)
+                                           "("
+                                           (number-to-string (get-echo-messages-count echo))
+                                           ")"))
+
+                            (setq unread (get-echo-unread-messages echo))
+                            (when (> unread 0)
+                                (princ "*"))
+                            (princ " ")
+
+                            ;; [New message] button
+                            (princ "\t[")
+                            (insert-button "New message"
+                                           'action (lambda (x) (idec-new-message (button-get x 'echo)))
+                                           'echo echo)
+                            (princ "]\t[")
+                            ;; [Mark read] button
+                            (insert-button "Mark read"
+                                           'action (lambda (x) (mark-all-as-read (button-get x 'echo) (button-get x 'point)))
+                                           'echo echo
+                                           'point (point))
+                            (princ "]\n"))
+                    (message (concat "IDEC: FUUUUUU <" echo ">")))
+                ))
+        (add-text-properties (point-min) (point-max) 'read-only))
+    (if checkpoint
+            (goto-char checkpoint))
+    (idec-mode))
+
+(defun browse-local-echo (&optional echo)
+    "Get messages from local ECHO."
+    (interactive)
+    (if (not echo)
+            (setq echo (read-string "Enter echo name: ")))
+    (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: INBOX->(" echo ")") )
+        (switch-to-buffer (concat "*IDEC: INBOX->(" echo ")"))
+        (let (counter)
+            (setq counter 0)
+            (dolist (msg (get-echo-messages echo))
+                (insert-button (concat (gethash "subj" msg) "\n")
+                               'action (lambda (x) (message (button-get x 'subj)))
+                               'subj (gethash "subj" msg)
+                               'help-echo (concat "Read message *" (gethash "subj" msg) "*") )
+                ))
+        (idec-mode)))
+
+
+;; NAVIGATION FUNCTIONS
+;; ;;;;;;;;;;;;;;;;;;;;
+
+(defun idec-next-message ()
+    "Show next message."
+    (interactive)
+    (kill-this-buffer)
+    (forward-button 1)
+    (push-button))
+
+(defun idec-previous-message ()
+    "Show next message."
+    (interactive)
+    (kill-this-buffer)
+    (backward-button 1)
+    (push-button))
+
+;; END OF NAVIGATION FUNCTIONS
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun idec-load-new-messages ()
+    "Load new messages from IDEC `idec-primary-node'."
+    (interactive)
+    (defvar current-echo nil)
+    (setq new-messages-list (make-hash-table :test 'equal))
+    (let (msgid-for-download)
+        (setq msgid-for-download (make-hash-table :test 'equal))
+        (dolist (line (split-string (download-subscriptions) "\n"))
+            (if (string-match "\\." line)
+                    (and (setq current-echo line)
+                         (store-echo-counter line))
+                (when (and ;; (check-message-in-echo line current-echo)
+                           (> (length line) 1)
+                           (check-message-in-db line current-echo))
+                    (when (not (string= "" line))
+                        (puthash line current-echo msgid-for-download)))))
+        (download-message msgid-for-download))
+    ;; (print (hash-table-count new-messages-list))
+    ;; (message (gethash "id" (nth 0 new-messages-list)))
+    (display-new-messages)
+    )
+
+(defun idec-new-message (&optional echo)
+    "Make new message to ECHO."
+    (interactive)
+    (if (not echo) (edit-new-message (read-string "Echo: "))
+        (edit-new-message echo)))
+
+;; Online
+(defun idec-online-browse ()
+    "Load echoes list.txt from node `idec-primary-node'."
+    (interactive)
+    (idec-fetch-echo-list (concat idec-primary-node "list.txt")))
+
+(defun idec-online-browse-hidden ()
+    "Browse hidden echo."
+    (interactive)
+    (load-echo-messages (read-string "Enter echo name: ") t))
+
 
 ;;; idec-mode.el ends here
+
+(provide 'idec-mode)

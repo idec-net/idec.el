@@ -26,7 +26,7 @@
 
 ;;; Code:
 
-(require 'idec-mode)
+;; (require 'idec-mode)
 (require 'idec-answers)
 
 (defun display-echo-messages (messages)
@@ -128,16 +128,6 @@
 (defun idec-fetch-echo-list (nodeurl)
     "Fetch echoes list from remote NODEURL."
         (proccess-echo-list (get-url-content nodeurl)))
-
-(defun idec-online-browse ()
-    "Load echoes list.txt from node `idec-primary-node'."
-    (interactive)
-    (idec-fetch-echo-list (concat idec-primary-node "list.txt")))
-
-(defun idec-online-browse-hidden ()
-    "Browse hidden echo."
-    (interactive)
-    (load-echo-messages (read-string "Enter echo name: ") t))
 
 (provide 'idec-online)
 
