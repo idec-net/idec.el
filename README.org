@@ -1,0 +1,64 @@
+* idec.el
+
+IDEC networks client for GNU Emacs.
+
+* Installation
+
+Clone repository:
+#+BEGIN_SRC markdown
+git clone https://github.com/Difrex/idec.el.git ~/.emacs.d/idecel
+#+END_SRC
+
+** Requirements
+Install reuired packages:
+1. *dash*
+2. *emacsql*
+3. *emacsql-sqlite*
+4. *web*
+
+** Configuration
+
+Write configuration into you init.el file
+#+BEGIN_SRC emacs-lisp
+(defun load-idec
+  "Configure IDEC."
+  (add-to-list 'load-path "~/.emacs.d/idecel")
+  (require 'idec-mode)
+  (add-hook 'idec-mode-hook 'visual-line-mode))
+(load-idec)
+#+END_SRC
+
+Or you can use *use-package* from MELPA.
+#+BEGIN_SRC emacs-lisp
+(use-package idec-mode
+        :load-path "~/projects/idecel"
+        :bind (("C-c C-c" . kill-this-buffer)
+               ("C-c C-n" . idec-next-message)
+               ("C-c C-b" . idec-previous-message)
+               ("C-C C-f" . idec-load-new-messages))
+        :init
+        :config
+        (add-hook 'idec-mode-hook 'visual-line-mode))
+#+END_SRC
+
+* Usage
+
+Customize you settings first. Run ~M-x customize-group <RET> idec <RET>~.
+
+** Interactive functions
+
+- *idec-load-new-messages*: Fetch new messages.
+
+*** Online reading/writing
+
+- *idec-online-browse*: View node echoes online without fetching. Node must support */list.txt* extension.
+- *idec-online-browse-hidden*: View hidden echo online without fetching.
+
+*** Local mail reading/writing
+
+- *idec-local-browse*: View list of fetched echoes.
+- *idec-browse-local-echo*: View fetched echo.
+
+* Development status
+
+In active development. UI is ugly :(.
