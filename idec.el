@@ -64,6 +64,40 @@ put cursor to CHECKPOINT."
 ;; END OF LOCAL MAIL FUNCTIONS
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun make-message-header (msg)
+    "Make message header from MSG hash."
+    (concat
+     (concat "ID:      " (gethash "id" msg) "\n")
+     (concat "From:    " (gethash "author" msg) "[" (gethash "address" msg) "]" "\n")
+     (concat "To:      " (gethash "recipient" msg) "\n")
+     (concat "Echo:    " (gethash "echo" msg) "\n")
+     (concat "At:      " (gethash "time" msg) "\n")
+     (concat "Subject: " (gethash "subj" msg) "\n")))
+
+(defun display-message-hash (msg)
+    "Disaply message MSG in new buffer."
+    (mark-message-read (gethash "id" msg) (gethash "echo" msg))
+    (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: " (gethash "subj" msg) "*"))
+        (switch-to-buffer (concat "*IDEC: " (gethash "subj" msg) "*"))
+        (princ (make-message-header msg))
+        (princ (concat "__________________________________\n\n"
+                       (gethash "body" msg)))
+        (princ "\n__________________________________\n")
+        (princ "[")
+        (let (answer-hash)
+            (setq answer-hash (make-hash-table :test 'equal))
+            (puthash "content" (gethash "msg" msg) answer-hash)
+            (insert-button "Answer"
+                           'action (lambda (x) (edit-answer-without-quote (button-get x 'id) (button-get x 'msg-hash)))
+                           'id (gethash "id" msg)
+                           'msg-hash answer-hash))
+        (princ "]")
+        (princ "\t   [")
+        (insert-button "Quote answer")
+        (princ "]")
+        (add-text-properties (point-min) (point-max) 'read-only))
+    (idec-mode))
+
 (defun display-message (msg)
     "Display message MSG in new buffer in idec-mode."
     (mark-message-read (gethash "id" msg) (get-message-field (gethash "msg" msg) "echo"))

@@ -227,7 +227,7 @@ optionaly return cursor to CHECKPOINT."
                             ;; Echo name with unread messages
                             ;; ii.test.14 (5)*
                             (insert-button echo
-                                           'action (lambda (x) (browse-local-echo (button-get x 'echo)))
+                                           'action (lambda (x) (idec-browse-local-echo (button-get x 'echo)))
                                            'echo echo
                                            '(face nil))
 
@@ -266,7 +266,7 @@ optionaly return cursor to CHECKPOINT."
             (goto-char checkpoint))
     (idec-mode))
 
-(defun browse-local-echo (&optional echo)
+(defun idec-browse-local-echo (&optional echo)
     "Get messages from local ECHO."
     (interactive)
     (if (not echo)
@@ -277,9 +277,10 @@ optionaly return cursor to CHECKPOINT."
             (setq counter 0)
             (dolist (msg (get-echo-messages echo))
                 (insert-button (concat (gethash "subj" msg) "\n")
-                               'action (lambda (x) (message (button-get x 'subj)))
+                               'action (lambda (x) (display-message-hash (button-get x 'msg)))
                                'subj (gethash "subj" msg)
-                               'help-echo (concat "Read message *" (gethash "subj" msg) "*") )
+                               'help-echo (concat "Read message *" (gethash "subj" msg) "*")
+                               'msg msg)
                 ))
         (idec-mode)))
 
