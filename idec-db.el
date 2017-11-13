@@ -129,8 +129,8 @@ unread by default, but you can MARK-READ it."
                           repto
                           (get-message-field msg "echo")
                           (get-message-field msg "subj")
-                          (get-message-field msg "time")
                           (s-join "\n" (get-message-field msg "body"))
+                          (get-message-field msg "time")
                           mark-read))
                     (message (concat "IDEC: Message " id " stored in db"))
                 (message (concat "IDEC: Problem to store message " id))))
@@ -167,9 +167,10 @@ unread by default, but you can MARK-READ it."
     (let (msgs)
         (setq msgs (make-list 0 (make-hash-table :test 'equal)))
         (dolist (l (emacsql (open-echo-db echo)
-                           [:select [id tags author recipient repto echo subj body time unread]
+                           [:select [id, tags, author, recipient, repto, echo, subj, body, time, unread]
                                     :from messages
-                                    :order-by time]))
+                                    :order-by time
+                                    :desc]))
             (if (> (length l) 0)
                     (setq msgs (append msgs (make-list 1 (make-hash-from-msg-list l))))))
         msgs))
