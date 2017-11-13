@@ -83,6 +83,7 @@
                             ([(id :primary-key)
                               tags
                               author
+                              address
                               recipient
                               repto
                               echo
@@ -121,10 +122,11 @@ unread by default, but you can MARK-READ it."
 
             (if (not (emacsql (open-echo-db (get-message-field msg "echo"))
                           [:insert :into messages
-                                   :values ([$s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10])]
+                                   :values ([$s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11])]
                           id
                           (get-message-field msg "tags")
                           (get-message-field msg "author")
+                          (get-message-field msg "address")
                           (get-message-field msg "recipient")
                           repto
                           (get-message-field msg "echo")
@@ -153,13 +155,14 @@ unread by default, but you can MARK-READ it."
                     (puthash "id" (nth 0 msg-list) msg-hash)
                     (puthash "tags" (nth 1 msg-list) msg-hash)
                     (puthash "author" (nth 2 msg-list) msg-hash)
-                    (puthash "recipient" (nth 3 msg-list) msg-hash)
-                    (puthash "repto" (nth 4 msg-list) msg-hash)
-                    (puthash "echo" (nth 5 msg-list) msg-hash)
-                    (puthash "subj" (nth 6 msg-list) msg-hash)
-                    (puthash "body" (nth 7 msg-list) msg-hash)
-                    (puthash "time" (nth 8 msg-list) msg-hash)
-                    (puthash "unread" (nth 9 msg-list) msg-hash)))
+                    (puthash "address" (nth 3 msg-list) msg-hash)
+                    (puthash "recipient" (nth 4 msg-list) msg-hash)
+                    (puthash "repto" (nth 5 msg-list) msg-hash)
+                    (puthash "echo" (nth 6 msg-list) msg-hash)
+                    (puthash "subj" (nth 7 msg-list) msg-hash)
+                    (puthash "body" (nth 8 msg-list) msg-hash)
+                    (puthash "time" (nth 9 msg-list) msg-hash)
+                    (puthash "unread" (nth 10 msg-list) msg-hash)))
         msg-hash))
 
 (defun get-echo-messages (echo)
@@ -167,10 +170,9 @@ unread by default, but you can MARK-READ it."
     (let (msgs)
         (setq msgs (make-list 0 (make-hash-table :test 'equal)))
         (dolist (l (emacsql (open-echo-db echo)
-                           [:select [id, tags, author, recipient, repto, echo, subj, body, time, unread]
+                           [:select [id, tags, author, address, recipient, repto, echo, subj, body, time, unread]
                                     :from messages
-                                    :order-by time
-                                    :desc]))
+                                    :order-by time]))
             (if (> (length l) 0)
                     (setq msgs (append msgs (make-list 1 (make-hash-from-msg-list l))))))
         msgs))

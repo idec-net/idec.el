@@ -31,7 +31,7 @@
 
 (defun replace-in-string (what with str)
     "Replace WHAT WITH in STR."
-  (replace-regexp-in-string (regexp-quote what) with str nil 'literal))
+    (replace-regexp-in-string (regexp-quote what) with str nil 'literal))
 
 (defun base64-to-base64url (str)
     "Make url safe base64 string STR."
@@ -153,20 +153,30 @@
 
 (defun get-answers-hash (id msg-hash)
     "Make answers hashtable from ID and MSG-HASH."
-    (let (answer-hash)
-        (setq answer-hash (make-hash-table :test 'equal))
-        (puthash "id" id answer-hash)
-        (puthash "echo" (get-message-field (gethash "content" msg-hash) "echo") answer-hash)
-        (puthash "author" (get-message-field (gethash "content" msg-hash) "author") answer-hash)
-        (puthash "time" (get-message-field (gethash "content" msg-hash) "time") answer-hash)
+    (if (gethash "content" msg-hash)
+            (let (answer-hash)
+                (setq answer-hash (make-hash-table :test 'equal))
+                (puthash "id" id answer-hash)
+                (puthash "echo" (get-message-field (gethash "content" msg-hash) "echo") answer-hash)
+                (puthash "author" (get-message-field (gethash "content" msg-hash) "author") answer-hash)
+                (puthash "time" (get-message-field (gethash "content" msg-hash) "time") answer-hash)
 
-        (setq subj (get-message-field (gethash "content" msg-hash) "subj"))
+                (setq subj (get-message-field (gethash "content" msg-hash) "subj"))
 
-        ;; Make `Re:' in subj if it not present.
-        (if (not (string-match "Re:" subj))
-                (puthash "subj" (concat "Re: " subj) answer-hash)
-            (puthash "subj" subj answer-hash))
-        answer-hash))
+                ;; Make `Re:' in subj if it not present.
+                (if (not (string-match "Re:" subj))
+                        (puthash "subj" (concat "Re: " subj) answer-hash)
+                    (puthash "subj" subj answer-hash))
+                answer-hash)
+        (let (subj)
+            (setq subj (gethash "subj" msg-hash))
+
+            ;; Make `Re:' in subj if it not present.
+            (if (not subj)
+                    (puthash "subj" (concat "Re: " "") msg-hash)
+                (if (not (string-match "Re:" subj))
+                        (puthash "subj" (concat "Re: " subj) msg-hash)))
+            msg-hash)))
 
 (defun make-answer-header (id msg-hash)
     "Make header with reto to ID from MSG-HASH."
@@ -184,6 +194,7 @@
 
 (defun edit-answer-without-quote (id msg-hash)
     "Answer to message with ID MSG-HASH."
+    msg-hash
     (let (answer-hash p)
         (setq answer-hash (get-answers-hash id msg-hash))
         (switch-to-buffer (get-buffer-create (concat "*IDEC: answer to " id "*")))
@@ -198,7 +209,7 @@
                             'action (lambda (x) (send-reply-message (button-get x 'msg)))
                             'msg answer-hash)
         (goto-char p)
-    (org-idec)))
+        (org-idec)))
 
 ;; END OF ANSWERS
 
