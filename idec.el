@@ -64,6 +64,20 @@ put cursor to CHECKPOINT."
 ;; END OF LOCAL MAIL FUNCTIONS
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun make-plain-text-message-from-hash(msg)
+    "Make standard plain text message from MSG hash."
+    (concat
+     (gethash "tags" msg) "\n"
+     (gethash "echo" msg) "\n"
+     (shell-command-to-string (concat "date -d '" (gethash "time" msg) "' +%s"))
+     (gethash "author" msg) "\n"
+     (gethash "address" msg) "\n"
+     (gethash "recipient" msg) "\n"
+     (gethash "subj" msg) "\n"
+     "\n"
+     (gethash "body" msg) "\n"))
+
+
 (defun make-message-header (msg)
     "Make message header from MSG hash."
     (concat
@@ -77,6 +91,7 @@ put cursor to CHECKPOINT."
 (defun display-message-hash (msg)
     "Disaply message MSG in new buffer."
     (mark-message-read (gethash "id" msg) (gethash "echo" msg))
+    (message (make-plain-text-message-from-hash msg))
     (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: " (gethash "subj" msg) "*"))
         (switch-to-buffer (concat "*IDEC: " (gethash "subj" msg) "*"))
         (princ (make-message-header msg))
@@ -86,7 +101,7 @@ put cursor to CHECKPOINT."
         (princ "[")
         (let (answer-hash)
             (setq answer-hash (make-hash-table :test 'equal))
-            (puthash "content" (gethash "msg" msg) answer-hash)
+            (puthash "content" (make-plain-text-message-from-hash msg) answer-hash)
             (insert-button "Answer"
                            'action (lambda (x) (edit-answer-without-quote (button-get x 'id) (button-get x 'msg-hash)))
                            'id (gethash "id" msg)
