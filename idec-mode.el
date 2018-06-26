@@ -40,7 +40,7 @@
     :type 'string
     :group 'idec)
 
-(defcustom idec-primary-node nil
+(defcustom idec-primary-node ""
     "Primary node to send messages."
     :type 'string
     :group 'idec)
