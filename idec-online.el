@@ -56,7 +56,11 @@
                              (setq subj (concat "Subject: " (get-message-field (gethash "content" msg-hash) "subj")))
                              (princ (concat subj "\n")))
                          (princ (concat "__________________________________\n\n"
-                                        (s-join "\n" (get-message-field (gethash "content" msg-hash) "body"))))
+                                        (replace-in-string "\r" ""
+                                                           (s-join "\n"
+                                                                   (get-message-field
+                                                                    (gethash "content" msg-hash)
+                                                                    "body")))))
                          (princ "\n__________________________________\n")
                          (princ "[")
                          (insert-button "Answer"

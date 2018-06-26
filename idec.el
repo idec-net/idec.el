@@ -81,7 +81,7 @@ put cursor to CHECKPOINT."
         (switch-to-buffer (concat "*IDEC: " (gethash "subj" msg) "*"))
         (princ (make-message-header msg))
         (princ (concat "__________________________________\n\n"
-                       (gethash "body" msg)))
+                       (replace-in-string "\r" "" (gethash "body" msg))))
         (princ "\n__________________________________\n")
         (princ "[")
         (let (answer-hash)
@@ -120,7 +120,9 @@ put cursor to CHECKPOINT."
         (princ (concat "At:      " (get-message-field (gethash "msg" msg) "time") "\n"))
         (princ (concat "Subject: " (get-message-field (gethash "msg" msg) "subj") "\n"))
         (princ (concat "__________________________________\n\n"
-                       (s-join "\n" (get-message-field (gethash "msg" msg) "body"))))
+                       (replace-in-string "\r" ""
+                                          (s-join "\n" (get-message-field (gethash "msg" msg)
+                                                                          "body")))))
         (princ "\n__________________________________\n")
         (princ "[")
         (let (answer-hash)
