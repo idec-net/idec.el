@@ -69,7 +69,7 @@ put cursor to CHECKPOINT."
     (concat
      (gethash "tags" msg) "\n"
      (gethash "echo" msg) "\n"
-     (shell-command-to-string (concat "date -d '" (gethash "time" msg) "' +%s"))
+     (nth 0 (split-string (number-to-string (time-to-seconds (date-to-time (gethash "time" msg)))) "\\.")) "\n"
      (gethash "author" msg) "\n"
      (gethash "address" msg) "\n"
      (gethash "recipient" msg) "\n"
@@ -117,11 +117,11 @@ put cursor to CHECKPOINT."
     "Display message MSG in new buffer in idec-mode."
     (mark-message-read (gethash "id" msg) (get-message-field (gethash "msg" msg) "echo"))
     (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: "
-                                                    (decode-coding-string
-                                                     (get-message-field
-                                                      (gethash "msg" msg) "subj")
-                                                     'utf-8)
-                                                    "*"))
+                                                           (decode-coding-string
+                                                            (get-message-field
+                                                             (gethash "msg" msg) "subj")
+                                                            'utf-8)
+                                                           "*"))
         ;; Run in IDEC mode
         (switch-to-buffer (concat "*IDEC: " (decode-coding-string (get-message-field
                                                                    (gethash "msg" msg) "subj")
