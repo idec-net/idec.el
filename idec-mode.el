@@ -68,7 +68,7 @@ Not used if `idec-smart-fetching' is not nil."
     :type 'string
     :group 'idec)
 
-(defcustom idec-echo-subscriptions nil
+(defcustom idec-echo-subscriptions "idec.talks,pipe.2032"
     "List of subribes echoes."
     :type 'string
     :group 'idec)

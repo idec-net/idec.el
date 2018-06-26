@@ -15,6 +15,7 @@ Install reuired packages:
 2. *emacsql*
 3. *emacsql-sqlite*
 4. *web*
+5. [[https://github.com/rejeep/f.el][f]]
 
 ** Configuration
 
