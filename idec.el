@@ -53,7 +53,11 @@
      (+ (- (get-longest-string (get-local-echoes))
            (length echo))
         3)
-     ? ))
+     ? ))                               ; `? ' - Space character
+
+(defun longest-local-echo-subj (echo)
+    "Get longest subj from local ECHO."
+    (get-longest-string (get-echo-subjects echo)))
 
 (defun mark-all-as-read (echo &optional checkpoint)
     "Mark all messages in ECHO as read;

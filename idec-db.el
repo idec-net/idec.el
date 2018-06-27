@@ -178,6 +178,16 @@ unread by default, but you can MARK-READ it."
                     (setq msgs (append msgs (make-list 1 (make-hash-from-msg-list l))))))
         msgs))
 
+(defun get-echo-subjects (echo)
+    "Get list of subjects from ECHO."
+    (let (subjects)
+        (setq subjects (make-list 0 ""))
+        (dolist (l (emacsql (open-echo-db echo)
+                            [:select [subj]
+                                     :from messages]))
+            (setq subjects (append subjects (make-list 1 (nth 0 l)))))
+        subjects))
+
 (defun get-echo-unread-messages (echo)
     "Get count of unread messages from ECHO database."
     (car (car (emacsql (open-echo-db echo)

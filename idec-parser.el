@@ -44,7 +44,6 @@ White space here is any of: space, tab, Emacs newline (line feed, ASCII 10)."
 
 (defun get-message-time (msg)
     "Get MSG time."
-    ;; ;; (trim-string
      (current-time-string
      (car (read-from-string (nth 2 (split-string msg "\n"))))))
 
