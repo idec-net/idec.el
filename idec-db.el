@@ -172,8 +172,9 @@ unread by default, but you can MARK-READ it."
         (dolist (l (emacsql (open-echo-db echo)
                            [:select [id, tags, author, address, recipient, repto, echo, subj, body, time, unread]
                                     :from messages
-                                    :order-by DATE\(time\)
-                                    :desc]))
+                                    :order-by rowid
+                                    ;; :desc
+                                    ]))
             (if (> (length l) 0)
                     (setq msgs (append msgs (make-list 1 (make-hash-from-msg-list l))))))
         msgs))
@@ -224,6 +225,7 @@ unread by default, but you can MARK-READ it."
 
 (defun mark-message-read (msgid echo)
     "Mark message MSGID as read in ECHO database."
+    (message (concat "Mark read message " msgid " in " echo))
     (emacsql (open-echo-db echo)
              [:update messages
               :set (= unread 0)
