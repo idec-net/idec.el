@@ -278,15 +278,15 @@ optionaly return cursor to CHECKPOINT."
             (let (counter)
                 (setq counter 0)
                 (dolist (msg (get-echo-messages echo))
-                    (insert-button (concat (gethash "subj" msg)
-                                           (make-string
-                                            (- longest
-                                               (length (gethash "subj" msg)))
-                                            ? ))
+                    (insert-button (gethash "subj" msg)
                                    'action (lambda (x) (display-message-hash (button-get x 'msg-hash)))
                                    'subj (gethash "subj" msg)
                                    'help-echo (concat "Read message *" (gethash "subj" msg) "*")
                                    'msg-hash msg)
+                    (princ (make-string
+                            (- longest
+                               (length (gethash "subj" msg)))
+                            ? ))
                     (princ (concat " " (gethash "time" msg)))
                     (princ (concat "\t" (gethash "author" msg) "\n")))
                 (idec-mode)))))
