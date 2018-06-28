@@ -169,15 +169,29 @@ unread by default, but you can MARK-READ it."
     "Get ECHO messages ordered by time."
     (let (msgs)
         (setq msgs (make-list 0 (make-hash-table :test 'equal)))
-        (dolist (l (emacsql (open-echo-db echo)
-                           [:select [id, tags, author, address, recipient, repto, echo, subj, body, time, unread]
-                                    :from messages
-                                    :order-by rowid
-                                    ;; :desc
-                                    ]))
+        (dolist (l (if idec-desc-local-echo-sort
+                           (and (message "Desc select")
+                                (idec-db-desc-echo-select echo))
+                       (and (message "Normal select")
+                            (idec-db-normal-echo-select echo))))
             (if (> (length l) 0)
                     (setq msgs (append msgs (make-list 1 (make-hash-from-msg-list l))))))
         msgs))
+
+(defun idec-db-normal-echo-select (echo)
+    "Select from ECHO in normal order."
+    (emacsql (open-echo-db echo)
+             [:select [id, tags, author, address, recipient, repto, echo, subj, body, time, unread]
+                      :from messages
+                      :order-by rowid]))
+
+(defun idec-db-desc-echo-select (echo)
+    "Select from ECHO in desc order."
+    (emacsql (open-echo-db echo)
+             [:select [id, tags, author, address, recipient, repto, echo, subj, body, time, unread]
+                      :from messages
+                      :order-by rowid
+                      :desc]))
 
 (defun get-echo-subjects (echo)
     "Get list of subjects from ECHO."

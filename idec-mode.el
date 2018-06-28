@@ -90,6 +90,11 @@ Default to `idec-download-offset'"
     :type 'string
     :group 'idec)
 
+(defcustom idec-desc-local-echo-sort nil
+    "Sort order in local echo display mode."
+    :type 'boolean
+    :group 'idec)
+
 (defgroup idec-accounts nil
     "IDEC accounts settings."
     :group 'idec)
