@@ -95,7 +95,6 @@ put cursor to CHECKPOINT."
 (defun display-message-hash (msg)
     "Disaply message MSG in new buffer."
     (mark-message-read (gethash "id" msg) (gethash "echo" msg))
-    (message (make-plain-text-message-from-hash msg))
     (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: " (gethash "subj" msg) "*"))
         (switch-to-buffer (concat "*IDEC: " (gethash "subj" msg) "*"))
         (princ (make-message-header msg))
@@ -120,6 +119,7 @@ put cursor to CHECKPOINT."
 (defun display-message (msg)
     "Display message MSG in new buffer in idec-mode."
     (mark-message-read (gethash "id" msg) (get-message-field (gethash "msg" msg) "echo"))
+    (defvar line "__________________________________")
     (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: "
                                                            (decode-coding-string
                                                             (get-message-field
@@ -138,11 +138,11 @@ put cursor to CHECKPOINT."
         (princ (concat "Echo:    " (get-message-field (gethash "msg" msg) "echo") "\n"))
         (princ (concat "At:      " (get-message-field (gethash "msg" msg) "time") "\n"))
         (princ (concat "Subject: " (get-message-field (gethash "msg" msg) "subj") "\n"))
-        (princ (concat "__________________________________\n\n"
+        (princ (concat line "\n\n"
                        (replace-in-string "\r" ""
                                           (s-join "\n" (get-message-field (gethash "msg" msg)
                                                                           "body")))))
-        (princ "\n__________________________________\n")
+        (princ (concat "\n" line "\n"))
         (princ "[")
         (let (answer-hash)
             (setq answer-hash (make-hash-table :test 'equal))
@@ -152,7 +152,7 @@ put cursor to CHECKPOINT."
                            'id (gethash "id" msg)
                            'msg-hash answer-hash))
         (princ "]")
-        (princ "\t   [")
+        (princ (concat (make-string 6 ? ) "["))
         (insert-button "Quote answer")
         (princ "]")
         (add-text-properties (point-min) (point-max) 'read-only))
