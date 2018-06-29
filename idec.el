@@ -114,7 +114,7 @@ put cursor to CHECKPOINT."
         (insert-button "Quote answer")
         (princ "]")
         (add-text-properties (point-min) (point-max) 'read-only))
-    (idec-mode))
+    (idec))
 
 (defun display-message (msg)
     "Display message MSG in new buffer in idec-mode."

@@ -209,7 +209,7 @@
                             'action (lambda (x) (send-reply-message (button-get x 'msg)))
                             'msg answer-hash)
         (goto-char p)
-        (org-idec)))
+        (idec)))
 
 ;; END OF ANSWERS
 

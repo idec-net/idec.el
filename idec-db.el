@@ -1,10 +1,11 @@
-;;; idec-db.el --- This file is a part of GNU Emacs client for IDEC network
+;;; idec-db.el --- This file is a part of client for IDEC network
 
 ;; Copyright (c) 2017 Denis Zheleztsov
 
 ;; Author: Denis Zheleztsov <difrex.punk@gmail.com>
 ;; Keywords: lisp,network,IDEC
 ;; Version: 0.1
+;; Homepage: https://github.com/idec-net/idec.el
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by

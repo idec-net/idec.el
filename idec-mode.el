@@ -35,8 +35,9 @@
 
 ;; Not used
 (defcustom idec-nodes-list
-    "http://idec.spline-online.tk/,https://ii-net.tk/ii/ii-point.php?q=/"
-    "List(comma separated) of IDEC nodes."
+    "http://idec.spline-online.tk/,https://ii-net.tk/ii/ii-point.php?q=/;
+    List(comma separated) of IDEC nodes;
+    Currently not used."
     :type 'string
     :group 'idec)
 
@@ -48,10 +49,11 @@
 ;; Never used at this time.
 (defcustom idec-use-list-txt t
     "Use /list.txt extension."
+    :type 'boolean
     :group 'idec)
 
 (defcustom idec-smart-fetch t
-    "Enable smat fetching;
+    "Enable smart fetching;
 Download only new messages; Not implemented."
     :type 'boolean
     :group 'idec)
@@ -73,7 +75,7 @@ Not used if `idec-smart-fetching' is not nil."
     :type 'string
     :group 'idec)
 
-(defcustom idec-mail-dir "~/.emacs.d/idec-mail"
+(defcustom idec-mail-dir (concat user-emacs-directory "/idec-mail")
     "Directory to store mail."
     :type 'string
     :group 'idec)
@@ -146,10 +148,10 @@ Default to `idec-download-offset'"
 
 (defvar idec-mode-map
     (let ((map (make-sparse-keymap)))
-        (define-key map ["C-c C-c"] 'kill-this-buffer)
-        (define-key map ["C-c C-n"] 'idec-next-message)
-        (define-key map ["C-c C-b"] 'idec-previous-message)
-        (define-key map ["C-c C-e"] 'idec-new-message)
+        (define-key map "\C-c \C-c" 'kill-this-buffer)
+        (define-key map "\C-c \C-n" 'idec-next-message)
+        (define-key map "\C-c \C-b" 'idec-previous-message)
+        (define-key map "\C-c \C-e" 'idec-new-message)
         map)
     "Keymapping for IDEC mode.")
 
@@ -182,7 +184,7 @@ Default to `idec-download-offset'"
       "Subject" "From" "To" "Echo" "At")
     '(("=" . 'font-lock-operator)
       (";" . 'font-lock-builtin))
-    '("\\.idec$")
+    '("\\.*idec\\.*|\\.*Idec\\.*|\\.*IDEC\\.*$")
     nil)
 
 (define-derived-mode org-idec text-mode "IDEC"
