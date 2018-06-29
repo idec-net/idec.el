@@ -34,10 +34,10 @@
     :group 'network)
 
 ;; Not used
-(defcustom idec-nodes-list
-    "http://idec.spline-online.tk/,https://ii-net.tk/ii/ii-point.php?q=/;
-    List(comma separated) of IDEC nodes;
-    Currently not used."
+(defcustom idec-nodes-list ""
+    "List(comma separated) of IDEC nodes;
+http://idec.spline-online.tk/,https://ii-net.tk/ii/ii-point.php?q=/;
+Currently not used."
     :type 'string
     :group 'idec)
 
@@ -71,11 +71,11 @@ Not used if `idec-smart-fetching' is not nil."
     :group 'idec)
 
 (defcustom idec-echo-subscriptions "idec.talks,pipe.2032"
-    "List of subribes echoes."
+    "List(comma separated string) of subribes echoes."
     :type 'string
     :group 'idec)
 
-(defcustom idec-mail-dir (concat user-emacs-directory "/idec-mail")
+(defcustom idec-mail-dir (concat user-emacs-directory "idec-mail")
     "Directory to store mail."
     :type 'string
     :group 'idec)
@@ -279,21 +279,27 @@ optionaly return cursor to CHECKPOINT."
     (if (not echo)
             (setq echo (read-string "Enter echo name: ")))
     (let (longest)
-        (setq longest (longest-local-echo-subj echo))
+        (setq longest (+ 1 (longest-local-echo-subj echo)))
         (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: INBOX->(" echo ")") )
             (switch-to-buffer (concat "*IDEC: INBOX->(" echo ")"))
             (let (counter)
                 (setq counter 0)
                 (dolist (msg (get-echo-messages echo))
+                    (setq subj-length (length (gethash "subj" msg)))
                     (insert-button (gethash "subj" msg)
                                    'action (lambda (x) (display-message-hash (button-get x 'msg-hash)))
                                    'subj (gethash "subj" msg)
                                    'help-echo (concat "Read message *" (gethash "subj" msg) "*")
                                    'msg-hash msg)
-                    (princ (make-string
-                            (- longest
-                               (length (gethash "subj" msg)))
-                            ? ))
+
+                    ;; Mark by asterisk unread message
+                    (if (= 1 (gethash "unread" msg))
+                            (and
+                             (princ "*")
+                             (if (> longest subj-length)
+                                     (setq subj-length (+ subj-length 1)))))
+
+                    (princ (make-string (- longest subj-length) ? ))
                     (princ (concat " " (gethash "time" msg)))
                     (princ (concat "\t" (gethash "author" msg) "\n")))
                 (idec-mode)))))
