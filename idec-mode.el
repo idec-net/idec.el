@@ -282,8 +282,8 @@ optionaly return cursor to CHECKPOINT."
         (setq longest (+ 1 (longest-local-echo-subj echo)))
         (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: INBOX->(" echo ")") )
             (switch-to-buffer (concat "*IDEC: INBOX->(" echo ")"))
-            (let (counter)
-                (setq counter 0)
+            (let (start)
+                (setq start (point))
                 (dolist (msg (get-echo-messages echo))
                     (setq subj-length (length (gethash "subj" msg)))
                     (insert-button (gethash "subj" msg)
@@ -302,6 +302,7 @@ optionaly return cursor to CHECKPOINT."
                     (princ (make-string (- longest subj-length) ? ))
                     (princ (concat " " (gethash "time" msg)))
                     (princ (concat "\t" (gethash "author" msg) "\n")))
+                (add-text-properties start (point) 'read-only)
                 (idec-mode)))))
 
 

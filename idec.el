@@ -97,6 +97,7 @@ put cursor to CHECKPOINT."
     (mark-message-read (gethash "id" msg) (gethash "echo" msg))
     (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: " (gethash "subj" msg) "*"))
         (switch-to-buffer (concat "*IDEC: " (gethash "subj" msg) "*"))
+        (setq start (point))
         (princ (make-message-header msg))
         (princ (concat "__________________________________\n\n"
                        (replace-in-string "\r" "" (gethash "body" msg))))
@@ -113,7 +114,7 @@ put cursor to CHECKPOINT."
         (princ "\t   [")
         (insert-button "Quote answer")
         (princ "]")
-        (add-text-properties (point-min) (point-max) 'read-only))
+        (add-text-properties start (point) 'read-only))
     (idec))
 
 (defun display-message (msg)

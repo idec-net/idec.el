@@ -54,7 +54,7 @@
 (defun base64url-encode-string (str)
     "Decode base64 urlsafe string STR."
     (message (concat "Base64url: " (base64-to-base64url (base64-encode-string str t))))
-    (base64-to-base64url (base64-encode-string str t)))
+    (base64-to-base64url (base64-encode-string str nil)))
 
 (defun base64url-decode-string (str)
     "Encode base64 urlsafe string STR."
@@ -64,16 +64,16 @@
     "Return url with `idec-primary-node' to send messages."
     (concat idec-primary-node "u/point"))
 
-(defun request-is-done (result)
-    "Show message with RESULT code."
-    (message "IDEC: Sended. Result: %S" result))
+(defun request-is-done ()
+    "Show message."
+    (message "IDEC: Message sended."))
 
 (defun do-post-request (url msg)
     "Make POST request to URL with data MSG."
     (message (gethash 'tmsg msg))
     (web-http-post
      (lambda (con header data)
-         (request-is-done data))
+         (request-is-done))
      :url url
      :data msg
      )
@@ -90,7 +90,7 @@
 
 (defun post-message (encoded-message)
     "Do POST request to `idec-primary-node' with Base64 ENCODED-MESSAGE."
-    (message (base64url-decode-string encoded-message))
+    ;; (message (base64url-decode-string encoded-message))
     (let (json)
         (setq json (make-hash-table :test 'equal))
         (puthash 'pauth idec-account-auth json)
@@ -112,7 +112,6 @@
                                        'utf-8)
                  msg)
         (puthash "echo" echo msg)
-        
         (do-send-new-post-request msg)))
 
 (defun do-send-new-post-request (msg)
@@ -129,7 +128,6 @@
 
 (defun do-send-reply-post-request (message)
     "Make IDEC compatible point MESSAGE and send it to `idec-primary-node'."
-    (message (gethash "body" message))
     (let (point-message)
         (setq point-message (list
                              (gethash "echo" message)
@@ -148,7 +146,6 @@
     (puthash "body"
              (s-join "\n" (-drop-last 1 (-drop 4 (split-string (buffer-string) "\n"))))
              msg)
-    (message (gethash "body" msg))
     (do-send-reply-post-request msg))
 
 (defun get-answers-hash (id msg-hash)
