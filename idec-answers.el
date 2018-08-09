@@ -191,7 +191,6 @@
 
 (defun edit-answer-without-quote (id msg-hash)
     "Answer to message with ID MSG-HASH."
-    msg-hash
     (let (answer-hash p)
         (setq answer-hash (get-answers-hash id msg-hash))
         (switch-to-buffer (get-buffer-create (concat "*IDEC: answer to " id "*")))
@@ -207,6 +206,33 @@
                             'msg answer-hash)
         (goto-char p)
         (idec)))
+
+(defun idec-answers-edit-answer-with-quote (id msg-hash)
+    "Answer to message with quoted body with ID, MSG-HASH and BODY."
+    (let (answer-hash p)
+        (setq answer-hash (get-answers-hash id msg-hash))
+        (switch-to-buffer (get-buffer-create (concat "*IDEC: answer to " id "*")))
+
+        (insert (make-answer-header id msg-hash))
+        (forward-line)
+        (add-text-properties (point) (point-min) 'read-only)
+        (setq p (point))
+
+        (defun insert-quote (head tail)
+            "Insert quote with HEAD and TAIL."
+            (insert "> ") (insert head) (insert "\n")
+            (when (> (length tail) 0)
+                (message "%S" tail)
+                (insert-quote (car tail) (cdr tail))))
+
+        (insert-quote (car (get-message-field (gethash "content" msg-hash) "body"))
+                      (cdr (get-message-field (gethash "content" msg-hash) "body")))
+        (insert "\n")
+        (insert-text-button "[Send]"
+                            'action (lambda (x) (send-reply-message (button-get x 'msg)))
+                            'msg answer-hash)
+        (goto-char p))
+    (idec))
 
 ;; END OF ANSWERS
 

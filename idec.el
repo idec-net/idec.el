@@ -109,10 +109,15 @@ put cursor to CHECKPOINT."
             (insert-button "Answer"
                            'action (lambda (x) (edit-answer-without-quote (button-get x 'id) (button-get x 'msg-hash)))
                            'id (gethash "id" msg)
-                           'msg-hash answer-hash))
+                           'msg-hash answer-hash)
         (princ "]")
         (princ "\t   [")
-        (insert-button "Quote answer")
+        (insert-button "Quoted answer"
+                       'action (lambda (x) (idec-answers-edit-answer-with-quote
+                                            (button-get x 'id)
+                                            (button-get x 'msg-hash)))
+                           'id (gethash "id" msg)
+                           'msg-hash answer-hash))
         (princ "]")
         (add-text-properties start (point) 'read-only))
     (idec))
@@ -151,14 +156,17 @@ put cursor to CHECKPOINT."
             (insert-button "Answer"
                            'action (lambda (x) (edit-answer-without-quote (button-get x 'id) (button-get x 'msg-hash)))
                            'id (gethash "id" msg)
-                           'msg-hash answer-hash))
+                           'msg-hash answer-hash)
         (princ "]")
-        (princ (concat (make-string 6 ? ) "["))
-        (insert-button "Quote answer")
+        (princ (concat (make-string 9 ? ) "["))
+        (insert-button "Quoted answer"
+                           'action (lambda (x) (idec-answers-edit-answer-with-quote (button-get x 'id) (button-get x 'msg-hash)))
+                           'id (gethash "id" msg)
+                           'msg-hash answer-hash))
         (princ "]")
         (add-text-properties (point-min) (point-max) 'read-only))
     (point-max)
-    (idec-mode))
+    (idec))
 
 (defun display-new-messages ()
     "Display new fetched messages from `new-messages-list'."
