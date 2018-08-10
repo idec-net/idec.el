@@ -104,12 +104,15 @@
     (switch-to-buffer (concat "*IDEC: New message to echo " echo "*"))
     (let ((msg (make-hash-table :test 'equal)))
         (puthash "body"
-                 (encode-coding-string (s-join "\n" (-drop-last 1 (-drop 4 (split-string (buffer-string) "\n"))))
-                                       'utf-8)
+                 (encode-coding-string
+                  (s-join "\n" (-drop-last 1 (-drop 4 (split-string (buffer-string) "\n"))))
+                  'utf-8)
+                 msg)
 
         (puthash "subj"
-                 (encode-coding-string (nth 1 (split-string (nth 2 (split-string (buffer-string) "\n")) "bj: "))
-                                       'utf-8)
+                 (encode-coding-string
+                  (nth 1 (split-string (nth 2 (split-string (buffer-string) "\n")) "bj: "))
+                  'utf-8)
                  msg)
         (puthash "echo" echo msg)
         (do-send-new-post-request msg)))
@@ -122,7 +125,7 @@
                              "All"
                              (gethash "subj" msg)
                              ""
-                             (gethash "body" msg)))
+                             (concat (gethash "body" msg) (idec-answers-insert-signature))))
         ;; Encode message in Base64
         (post-message (base64url-encode-string (s-join "\n" point-message)))))
 
@@ -135,7 +138,7 @@
                              (gethash "subj" message)
                              ""
                              (concat "@repto:" (gethash "id" message))
-                             (gethash "body" message)))
+                             (concat (gethash "body" message) (idec-answers-insert-signature))))
         ;; Encode message in Base64
         (post-message (base64url-encode-string (encode-coding-string (s-join "\n" point-message) 'utf-8)))
         (kill-buffer (concat "*IDEC: answer to " (gethash "id" message) "*"))))
@@ -199,13 +202,18 @@
         (forward-line)
         (add-text-properties (point) (point-min) 'read-only)
         (setq p (point))
-
         (insert "\n")
         (insert-text-button "[Send]"
                             'action (lambda (x) (send-reply-message (button-get x 'msg)))
                             'msg answer-hash)
         (goto-char p)
         (idec)))
+
+(defun idec-answers-insert-signature ()
+    "Add signature to the message."
+    (if idec-attach-message-signature
+            (concat "\n\n" "// " idec-message-signature)
+        ""))
 
 (defun idec-answers-get-author-for-quote (author)
     "Get AUTHOR."
@@ -244,8 +252,6 @@ receive string HEAD, list TAIL and original message AUTHOR."
          (car (get-message-field (gethash "content" msg-hash) "body"))
          (cdr (get-message-field (gethash "content" msg-hash) "body"))
          (idec-answers-get-author-for-quote (get-message-field (gethash "content" msg-hash) "author")))
-        (insert "\n")
-        
         (setq p (- (point) 1))
 
         ;; [Send] button
@@ -270,17 +276,17 @@ receive string HEAD, list TAIL and original message AUTHOR."
 (defun edit-new-message (echo)
     "Edit new message to ECHO."
     (switch-to-buffer (get-buffer-create (concat "*IDEC: New message to echo " echo "*")))
-    (insert (make-new-message-header echo))
-    (forward-line)
-
     (let (p)
+        (insert (make-new-message-header echo))
         (setq p (point))
+        (forward-line)
+        
         (insert "\n")
         (insert-text-button "[Send]"
                             'action (lambda (x) (send-new-message (button-get x 'msg-echo)))
                             'msg-echo echo)
         (goto-char p))
-    (org-idec))
+    (idec))
 
 (provide 'idec-answers)
 

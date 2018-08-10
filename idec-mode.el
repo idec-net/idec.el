@@ -97,6 +97,16 @@ Default to `idec-download-offset'"
     :type 'boolean
     :group 'idec)
 
+(defcustom idec-message-signature "Sent from my GNU Emacs"
+    "Message signatue."
+    :type 'string
+    :group 'idec)
+
+(defcustom idec-attach-message-signature nil
+    "Add or not signature to message."
+    :type 'boolean
+    :group 'idec)
+
 (defgroup idec-accounts nil
     "IDEC accounts settings."
     :group 'idec)
@@ -146,12 +156,9 @@ Default to `idec-download-offset'"
 
 (defvar idec-mode-hook nil)
 
-(defvar idec-mode-map
+(defvar idec-mode-mode-map
     (let ((map (make-sparse-keymap)))
-        (define-key map "\C-c \C-c" 'kill-this-buffer)
-        (define-key map "\C-c \C-n" 'idec-next-message)
-        (define-key map "\C-c \C-b" 'idec-previous-message)
-        (define-key map "\C-c \C-e" 'idec-new-message)
+        (define-key map "n" 'idec-new-message)
         map)
     "Keymapping for IDEC mode.")
 
@@ -179,7 +186,7 @@ Default to `idec-download-offset'"
 ;; Mode function
 (define-generic-mode
         'idec
-    '("//" ">" "ЗЫ" "# ")
+    '("//" ">" "ЗЫ")
     '("ii://" "ID" "$subj" "сабж" "субж"
       "Subject" "From" "To" "Echo" "At")
     '(("=" . 'font-lock-operator)
@@ -190,7 +197,7 @@ Default to `idec-download-offset'"
 (define-derived-mode org-idec text-mode "IDEC"
     "Major mode for view and editing IDEC messages."
     :syntax-table idec-mode-syntax-table
-    (setq-local comment-start "/{2} ")
+    (setq-local comment-start "> ")
     (setq-local font-lock-defaults
                 '(idec-font-lock-keywords))
     (use-local-map idec-mode-map)
@@ -199,15 +206,13 @@ Default to `idec-download-offset'"
     (setq mode-name "[IDEC]")
     (run-hooks 'idec-mode-hook))
 
-(defun idec-mode ()
+(define-derived-mode idec-mode nil "idec-mode" ()
     "Major mode for view and editing IDEC messages."
-    (interactive)
+    :syntax-table idec-mode-syntax-table
     (kill-all-local-variables)
     ;; Mode definition
     (set-syntax-table idec-mode-syntax-table)
     (use-local-map idec-mode-map)
-    ;; (font-lock-add-keywords 'idec-mode '(idec-font-lock-keywords))
-    ;; (set (make-local-variable 'font-lock-defaults) '(idec-font-lock-keywords))
     (setq major-mode 'idec-mode)
     (setq mode-name "[IDEC]")
     (setq imenu-generic-expression "*IDEC")
@@ -224,7 +229,6 @@ Default to `idec-download-offset'"
     "Browse local mail from `idec-mail-dir';
 optionaly return cursor to CHECKPOINT."
     (interactive)
-    (get-buffer-create "*IDEC: INBOX*")
     (with-output-to-temp-buffer (get-buffer-create "*IDEC: INBOX*")
         (switch-to-buffer "*IDEC: INBOX*")
         (save-excursion
@@ -266,12 +270,11 @@ optionaly return cursor to CHECKPOINT."
                                            'echo echo
                                            'point (point))
                             (princ "]\n"))
-                    (message (concat "IDEC: FUUUUUU <" echo ">")))
-                ))
-        (put-text-property (beginning-of-buffer) (end-of-buffer) 'read-only nil))
-    (if checkpoint
-            (goto-char checkpoint))
-    (idec))
+                    (message (concat "IDEC: FUUUUUU <" echo ">")))))
+        (when checkpoint
+            (goto-char checkpoint)))
+    (idec-mode)
+    (add-text-properties (beginning-of-buffer) (end-of-buffer) 'read-only))
 
 (defun idec-browse-local-echo (&optional echo)
     "Get messages from local ECHO."
