@@ -268,7 +268,7 @@ optionaly return cursor to CHECKPOINT."
                             (princ "]\n"))
                     (message (concat "IDEC: FUUUUUU <" echo ">")))
                 ))
-        (add-text-properties (beginning-of-buffer) (end-of-buffer) 'read-only))
+        (put-text-property (beginning-of-buffer) (end-of-buffer) 'read-only nil))
     (if checkpoint
             (goto-char checkpoint))
     (idec))

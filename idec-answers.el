@@ -106,7 +106,7 @@
         (puthash "body"
                  (encode-coding-string (s-join "\n" (-drop-last 1 (-drop 4 (split-string (buffer-string) "\n"))))
                                        'utf-8)
-                 msg)
+
         (puthash "subj"
                  (encode-coding-string (nth 1 (split-string (nth 2 (split-string (buffer-string) "\n")) "bj: "))
                                        'utf-8)
@@ -207,28 +207,50 @@
         (goto-char p)
         (idec)))
 
+(defun idec-answers-get-author-for-quote (author)
+    "Get AUTHOR."
+    ;; Parse author
+    (if (string-match ".* .*" author)
+            (concat
+             (nth 1 (s-split "" (nth 0 (s-split " " author))))
+             (nth 1 (s-split "" (nth 1 (s-split " " author)))))
+        author))
+
+(defun idec-answers-insert-quote (head tail author)
+    "Recursive function for inserting quoted body text;
+receive string HEAD, list TAIL and original message AUTHOR."
+    (message "Quote insert %S" author)
+    (when (not (string-match "^$" head))
+        (insert author)
+        (insert "> "))
+    (insert (replace-in-string "\r" "" head)) (insert "\n")
+    (when (> (length tail) 0)
+        (idec-answers-insert-quote (car tail) (cdr tail) author)))
+
 (defun idec-answers-edit-answer-with-quote (id msg-hash)
     "Answer to message with quoted body with ID, MSG-HASH and BODY."
-    (let (answer-hash p)
+    (let (answer-hash p author)
         (setq answer-hash (get-answers-hash id msg-hash))
         (switch-to-buffer (get-buffer-create (concat "*IDEC: answer to " id "*")))
 
+        ;; Answer message header
         (insert (make-answer-header id msg-hash))
         (forward-line)
         (add-text-properties (point) (point-min) 'read-only)
-        (setq p (point))
 
-        (defun insert-quote (head tail)
-            "Insert quote with HEAD and TAIL."
-            (insert "> ") (insert head) (insert "\n")
-            (when (> (length tail) 0)
-                (message "%S" tail)
-                (insert-quote (car tail) (cdr tail))))
 
-        (insert-quote (car (get-message-field (gethash "content" msg-hash) "body"))
-                      (cdr (get-message-field (gethash "content" msg-hash) "body")))
+        ;; Quote
+        (idec-answers-insert-quote
+         (car (get-message-field (gethash "content" msg-hash) "body"))
+         (cdr (get-message-field (gethash "content" msg-hash) "body"))
+         (idec-answers-get-author-for-quote (get-message-field (gethash "content" msg-hash) "author")))
         (insert "\n")
-        (insert-text-button "[Send]"
+        
+        (setq p (- (point) 1))
+
+        ;; [Send] button
+        (setq start (point))
+        (insert-button "[Send]"
                             'action (lambda (x) (send-reply-message (button-get x 'msg)))
                             'msg answer-hash)
         (goto-char p))
@@ -243,8 +265,7 @@
      (concat "New message to echo " echo "\n")
      "\n"
      "Subj: \n"
-     "------- YOU MESSAGE BELLOW -------\n")
-    )
+     "------- YOU MESSAGE BELLOW -------\n"))
 
 (defun edit-new-message (echo)
     "Edit new message to ECHO."

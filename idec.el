@@ -111,7 +111,7 @@ put cursor to CHECKPOINT."
                            'id (gethash "id" msg)
                            'msg-hash answer-hash)
         (princ "]")
-        (princ "\t   [")
+        (princ (concat (make-string 11 ? ) "["))
         (insert-button "Quoted answer"
                        'action (lambda (x) (idec-answers-edit-answer-with-quote
                                             (button-get x 'id)
