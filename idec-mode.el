@@ -268,10 +268,10 @@ optionaly return cursor to CHECKPOINT."
                             (princ "]\n"))
                     (message (concat "IDEC: FUUUUUU <" echo ">")))
                 ))
-        (add-text-properties (point-min) (point-max) 'read-only))
+        (add-text-properties (beginning-of-buffer) (end-of-buffer) 'read-only))
     (if checkpoint
             (goto-char checkpoint))
-    (idec-mode))
+    (idec))
 
 (defun idec-browse-local-echo (&optional echo)
     "Get messages from local ECHO."
@@ -282,28 +282,26 @@ optionaly return cursor to CHECKPOINT."
         (setq longest (+ 1 (longest-local-echo-subj echo)))
         (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: INBOX->(" echo ")") )
             (switch-to-buffer (concat "*IDEC: INBOX->(" echo ")"))
-            (let (start)
-                (setq start (point))
-                (dolist (msg (get-echo-messages echo))
-                    (setq subj-length (length (gethash "subj" msg)))
-                    (insert-button (gethash "subj" msg)
-                                   'action (lambda (x) (display-message-hash (button-get x 'msg-hash)))
-                                   'subj (gethash "subj" msg)
-                                   'help-echo (concat "Read message *" (gethash "subj" msg) "*")
-                                   'msg-hash msg)
+            (dolist (msg (get-echo-messages echo))
+                (setq subj-length (length (gethash "subj" msg)))
+                (insert-button (gethash "subj" msg)
+                               'action (lambda (x) (display-message-hash (button-get x 'msg-hash)))
+                               'subj (gethash "subj" msg)
+                               'help-echo (concat "Read message *" (gethash "subj" msg) "*")
+                               'msg-hash msg)
 
-                    ;; Mark by asterisk unread message
-                    (if (= 1 (gethash "unread" msg))
-                            (and
-                             (princ "*")
-                             (if (> longest subj-length)
-                                     (setq subj-length (+ subj-length 1)))))
+                ;; Mark by asterisk unread message
+                (if (= 1 (gethash "unread" msg))
+                        (and
+                         (princ "*")
+                         (if (> longest subj-length)
+                                 (setq subj-length (+ subj-length 1)))))
 
-                    (princ (make-string (- longest subj-length) ? ))
-                    (princ (concat " " (gethash "time" msg)))
-                    (princ (concat "\t" (gethash "author" msg) "\n")))
-                (add-text-properties start (point) 'read-only)
-                (idec-mode)))))
+                (princ (make-string (- longest subj-length) ? ))
+                (princ (concat " " (gethash "time" msg)))
+                (princ (concat "\t" (gethash "author" msg) "\n")))
+            (add-text-properties (beginning-of-buffer) (end-of-buffer) 'read-only)))
+    (idec))
 
 
 ;; NAVIGATION FUNCTIONS
