@@ -81,16 +81,23 @@ put cursor to CHECKPOINT."
      "\n"
      (gethash "body" msg) "\n"))
 
-
 (defun make-message-header (msg)
     "Make message header from MSG hash."
-    (concat
-     (concat "ID:      " (gethash "id" msg) "\n")
-     (concat "From:    " (gethash "author" msg) "[" (gethash "address" msg) "]" "\n")
-     (concat "To:      " (gethash "recipient" msg) "\n")
-     (concat "Echo:    " (gethash "echo" msg) "\n")
-     (concat "At:      " (gethash "time" msg) "\n")
-     (concat "Subject: " (gethash "subj" msg) "\n")))
+     (insert (concat "ID:      " (gethash "id" msg) "\n"))
+     (insert "From:    " )
+     (if (not (string-equal (gethash "repto" msg) ""))
+             (insert-button (concat (gethash "author" msg) "[" (gethash "address" msg) "]")
+                            'action (lambda (x) (display-message-hash
+                                                 (idec-db-get-message-by-id
+                                                  (gethash "repto" (button-get x 'msg))
+                                                  (gethash "echo" (button-get x 'msg)))))
+                            'msg msg)
+         (insert (concat (gethash "author" msg) "[" (gethash "address" msg) "]")))
+     (insert "\n")
+     (insert (concat "To:      " (gethash "recipient" msg) "\n"))
+     (insert (concat "Echo:    " (gethash "echo" msg) "\n"))
+     (insert (concat "At:      " (gethash "time" msg) "\n"))
+     (insert (concat "Subject: " (gethash "subj" msg) "\n")))
 
 (defun display-message-hash (msg)
     "Disaply message MSG in new buffer."
@@ -98,7 +105,7 @@ put cursor to CHECKPOINT."
     (with-output-to-temp-buffer (get-buffer-create (concat "*IDEC: " (gethash "subj" msg) "*"))
         (switch-to-buffer (concat "*IDEC: " (gethash "subj" msg) "*"))
         (setq start (point))
-        (princ (make-message-header msg))
+        (make-message-header msg)
         (princ (concat "__________________________________\n\n"
                        (replace-in-string "\r" "" (gethash "body" msg))))
         (princ "\n__________________________________\n")

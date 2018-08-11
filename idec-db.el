@@ -217,9 +217,13 @@ unread by default, but you can MARK-READ it."
              [:select (funcall count id)
               :from messages]))))
 
-(defun get-message-from-db (msgid echo)
+(defun idec-db-get-message-by-id (msgid &optional echo)
     "Retrieve message by MSGID from ECHO database."
-    )
+    (make-hash-from-msg-list (car (emacsql (open-echo-db echo)
+             [:select [id, tags, author, address, recipient, repto, echo, subj, body, time, unread]
+                      :from messages
+                      :where (= id $s1)]
+             msgid))))
 
 (defun delete-message-from-db (msgid echo)
     "Delete message by MSGID from ECHO database."
