@@ -231,6 +231,7 @@ optionaly return cursor to CHECKPOINT."
     (interactive)
     (with-output-to-temp-buffer (get-buffer-create "*IDEC: INBOX*")
         (switch-to-buffer "*IDEC: INBOX*")
+        (insert "* LOCAL ECHOAREAS\n")
         (save-excursion
             (dolist (echo (get-local-echoes))
                 (if echo
@@ -246,7 +247,7 @@ optionaly return cursor to CHECKPOINT."
                             (setq start (point))
                             (end-of-line)
                             (setq end (point))
-                            (add-text-properties start end '(comment t face '(:foreground "light green")))
+                            (put-text-property start end 'font-lock-face '(:foreground "light blue"))
 
                             (princ (concat (dots echo)
                                            "("
@@ -269,7 +270,10 @@ optionaly return cursor to CHECKPOINT."
                                            'action (lambda (x) (mark-all-as-read (button-get x 'echo) (button-get x 'point)))
                                            'echo echo
                                            'point (point))
-                            (princ "]\n"))
+                            (princ "]")
+                            (when (> unread 0)
+                                (princ (concat " unread (" (number-to-string unread) ")")))
+                            (princ "\n"))
                     (message (concat "IDEC: FUUUUUU <" echo ">")))))
         (when checkpoint
             (goto-char checkpoint)))

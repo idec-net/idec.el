@@ -91,7 +91,8 @@ put cursor to CHECKPOINT."
                                                  (idec-db-get-message-by-id
                                                   (gethash "repto" (button-get x 'msg))
                                                   (gethash "echo" (button-get x 'msg)))))
-                            'msg msg)
+                            'msg msg
+                            'help-echo (concat "Jump to " (gethash "repto" msg)))
          (insert (concat (gethash "author" msg) "[" (gethash "address" msg) "]")))
      (insert "\n")
      (insert (concat "To:      " (gethash "recipient" msg) "\n"))
