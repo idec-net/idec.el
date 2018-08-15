@@ -240,8 +240,7 @@ optionaly return cursor to CHECKPOINT."
                             ;; ii.test.14 (5)*
                             (insert-button echo
                                            'action (lambda (x) (idec-browse-local-echo (button-get x 'echo)))
-                                           'echo echo
-                                           '(face nil))
+                                           'echo echo)
 
                             (beginning-of-line)
                             (setq start (point))
@@ -255,12 +254,12 @@ optionaly return cursor to CHECKPOINT."
                                            ")"))
 
                             (setq unread (get-echo-unread-messages echo))
-                            (when (> unread 0)
-                                (princ "*"))
+                            ;; (when (> unread 0)
+                            ;;     (princ "*"))
                             (princ " ")
 
                             ;; [New message] button
-                            (princ "\t[")
+                            (princ "  [")
                             (insert-button "New message"
                                            'action (lambda (x) (idec-new-message (button-get x 'echo)))
                                            'echo echo)
@@ -271,14 +270,15 @@ optionaly return cursor to CHECKPOINT."
                                            'echo echo
                                            'point (point))
                             (princ "]")
+
+                            ;; Unread messages count
                             (when (> unread 0)
                                 (princ (concat " unread (" (number-to-string unread) ")")))
                             (princ "\n"))
                     (message (concat "IDEC: FUUUUUU <" echo ">")))))
         (when checkpoint
             (goto-char checkpoint)))
-    (idec-mode)
-    (add-text-properties (beginning-of-buffer) (end-of-buffer) 'read-only))
+    (idec-mode))
 
 (defun idec-browse-local-echo (&optional echo)
     "Get messages from local ECHO."
@@ -306,8 +306,7 @@ optionaly return cursor to CHECKPOINT."
 
                 (princ (make-string (- longest subj-length) ? ))
                 (princ (concat " " (gethash "time" msg)))
-                (princ (concat "\t" (gethash "author" msg) "\n")))
-            (add-text-properties (beginning-of-buffer) (end-of-buffer) 'read-only)))
+                (princ (concat "\t" (gethash "author" msg) "\n")))))
     (idec))
 
 
